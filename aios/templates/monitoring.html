@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}监测配置 · {{ app_name }}{% endblock %}
+{% block content_class %}content-wide{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">监测配置</h1>
+    <p class="page-subtitle">模块、主题与检索式保存在数据库中，改完下次监测立即生效。</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="/monitoring/ai/new">
+      {{ ui.icon('plus', 'icon icon-sm') }} AI 创建模块
+    </a>
+    <a class="btn" href="#add-module">
+      {{ ui.icon('edit', 'icon icon-sm') }} 手动创建
+    </a>
+  </div>
+</div>
+
+{% if modules %}
+<div class="surface">
+  <div class="table-wrap">
+    <table class="table table-hover table-linked">
+      <thead>
+        <tr>
+          <th>模块</th>
+          <th>状态</th>
+          <th class="num">主题</th>
+          <th class="num">检索式</th>
+          <th class="num">回溯</th>
+          <th class="num">入报上限</th>
+          <th class="shrink"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for module in modules %}
+        <tr data-href="/monitoring/modules/{{ module.id }}" style="cursor:pointer">
+          <td>
+            <a href="/monitoring/modules/{{ module.id }}" style="color:var(--text)">{{ module.name }}</a>
+            {% if module.description %}
+              <div class="small muted">{{ module.description|truncate_text(52) }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="status-line">
+              <span class="dot {{ 'dot-success' if module.enabled else '' }}"></span>
+              {{ '启用' if module.enabled else '已停用' }}
+            </span>
+          </td>
+          <td class="num">{{ module.topic_count }}</td>
+          <td class="num">{{ module.query_count }}</td>
+          <td class="num nowrap">{{ module.lookback_days }} 天</td>
+          <td class="num">{{ module.max_report_items }}</td>
+          <td class="shrink">
+            <div class="menu" data-open="false">
+              <button type="button" class="btn btn-ghost btn-icon" data-menu-trigger
+                      aria-haspopup="true" aria-expanded="false" aria-label="{{ module.name }} 更多操作">
+                {{ ui.icon('dots', 'icon icon-sm') }}
+              </button>
+              <div class="menu-panel" role="menu">
+                <a class="menu-item" role="menuitem" href="/monitoring/modules/{{ module.id }}">
+                  {{ ui.icon('edit', 'icon icon-sm') }} 编辑
+                </a>
+                <form method="post" action="/monitoring/modules/{{ module.id }}/toggle">
+                  <button type="submit" class="menu-item" role="menuitem">
+                    {{ ui.icon('pause' if module.enabled else 'play', 'icon icon-sm') }}
+                    {{ '停用' if module.enabled else '启用' }}
+                  </button>
+                </form>
+                <form method="post" action="/monitoring/modules/{{ module.id }}/move">
+                  <input type="hidden" name="direction" value="up">
+                  <button type="submit" class="menu-item" role="menuitem">
+                    {{ ui.icon('arrow-up', 'icon icon-sm') }} 上移
+                  </button>
+                </form>
+                <form method="post" action="/monitoring/modules/{{ module.id }}/move">
+                  <input type="hidden" name="direction" value="down">
+                  <button type="submit" class="menu-item" role="menuitem">
+                    {{ ui.icon('arrow-down', 'icon icon-sm') }} 下移
+                  </button>
+                </form>
+                <div class="menu-sep"></div>
+                <form method="post" action="/monitoring/modules/{{ module.id }}/archive"
+                      data-confirm="归档「{{ module.name }}」？该模块将停止监测，历史报告不受影响。">
+                  <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                    {{ ui.icon('archive', 'icon icon-sm') }} 归档
+                  </button>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-title">暂无监测模块</div>
+    <p class="empty-desc">
+      用一句话描述想监测什么，AI 会生成完整草稿；也可以手动逐项创建。
+    </p>
+    <a class="btn btn-primary" href="/monitoring/ai/new">AI 创建模块</a>
+  </div>
+{% endif %}
+
+{% if archived %}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">已归档</h2>
+    <span class="section-desc">不再参与监测，历史报告仍可正常查看。</span>
+  </div>
+  <div class="surface">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>模块</th><th>标识</th><th class="num">主题</th><th class="shrink"></th></tr></thead>
+        <tbody>
+          {% for module in archived %}
+          <tr>
+            <td>{{ module.name }}</td>
+            <td class="mono muted">{{ module.key }}</td>
+            <td class="num">{{ module.topic_count }}</td>
+            <td class="shrink">
+              <form method="post" action="/monitoring/modules/{{ module.id }}/restore" class="inline">
+                <button type="submit" class="btn btn-sm">恢复</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="section" id="add-module">
+  <div class="section-header">
+    <h2 class="section-title">手动创建模块</h2>
+    <span class="section-desc">
+      例如「AI Browser / Agent 浏览器」。也可以用
+      <a href="/monitoring/ai/new">AI 创建模块</a> 一句话生成草稿。
+    </span>
+  </div>
+  <div class="surface surface-pad">
+    <form method="post" action="/monitoring/modules">
+      <div class="field-row">
+        <div class="field">
+          <label for="new-name">模块名称</label>
+          <input type="text" id="new-name" name="name" placeholder="AI Browser" required>
+        </div>
+        <div class="field">
+          <label for="new-key">标识</label>
+          <input type="text" id="new-key" name="key" placeholder="ai_browser" required>
+          <div class="field-hint">小写字母、数字、- 或 _</div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="new-desc">描述</label>
+        <input type="text" id="new-desc" name="description" placeholder="该领域的监测范围">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="new-lookback">回溯天数</label>
+          <input type="number" id="new-lookback" name="lookback_days" value="3" min="1" max="60">
+        </div>
+        <div class="field">
+          <label for="new-cand">最大候选数</label>
+          <input type="number" id="new-cand" name="max_candidates" value="18" min="1" max="100">
+        </div>
+        <div class="field">
+          <label for="new-items">入报上限</label>
+          <input type="number" id="new-items" name="max_report_items" value="2" min="1" max="10">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">新增模块</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

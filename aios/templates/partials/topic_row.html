@@ -1,0 +1,40 @@
+{% import "_icons.html" as ui with context %}
+{#- One topic inside the module editor. Secondary actions live in the ⋯ menu so
+    the list reads as content, not as a row of buttons. -#}
+<div class="settings-row">
+  <div class="settings-row-main">
+    <div class="settings-row-title">
+      <span class="dot {{ 'dot-success' if topic.enabled else '' }}"></span>
+      <a href="/monitoring/topics/{{ topic.id }}" style="color:var(--text)">{{ topic.name }}</a>
+      {% if not topic.enabled %}<span class="badge s-muted">已停用</span>{% endif %}
+    </div>
+    <div class="settings-row-desc">
+      {{ topic.queries|selectattr('enabled')|list|length }} 条检索式
+      {%- if topic.description %} · {{ topic.description|truncate_text(46) }}{% endif %}
+    </div>
+  </div>
+  <div class="settings-row-action">
+    <a class="btn btn-ghost btn-sm" href="/monitoring/topics/{{ topic.id }}">编辑</a>
+    <div class="menu" data-open="false">
+      <button type="button" class="btn btn-ghost btn-icon" data-menu-trigger
+              aria-haspopup="true" aria-expanded="false" aria-label="{{ topic.name }} 更多操作">
+        {{ ui.icon('dots', 'icon icon-sm') }}
+      </button>
+      <div class="menu-panel" role="menu">
+        <form method="post" action="/monitoring/topics/{{ topic.id }}/toggle">
+          <button type="submit" class="menu-item" role="menuitem">
+            {{ ui.icon('pause' if topic.enabled else 'play', 'icon icon-sm') }}
+            {{ '停用' if topic.enabled else '启用' }}
+          </button>
+        </form>
+        <div class="menu-sep"></div>
+        <form method="post" action="/monitoring/topics/{{ topic.id }}/archive"
+              data-confirm="归档主题「{{ topic.name }}」？">
+          <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+            {{ ui.icon('archive', 'icon icon-sm') }} 归档
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

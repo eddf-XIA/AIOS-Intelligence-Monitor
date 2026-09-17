@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}情报事件 · {{ app_name }}{% endblock %}
+{% block content_class %}content-wide{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">情报事件</h1>
+    <p class="page-subtitle">持续追踪的事件，而不是一次性的新闻条目。</p>
+  </div>
+</div>
+
+<div class="surface surface-pad" style="margin-bottom:var(--space-5)">
+  <form method="get" action="/events" class="inline-form">
+    <input type="search" name="q" value="{{ q }}" placeholder="搜索事件标题或摘要" aria-label="搜索事件">
+    <select name="status" aria-label="状态" style="width:auto;min-width:130px;flex:none">
+      <option value="">全部状态</option>
+      {% for s in statuses %}
+        {% set label = status_style(s) %}
+        <option value="{{ s }}" {{ 'selected' if status == s }}>{{ label[1] }}</option>
+      {% endfor %}
+    </select>
+    <select name="module_id" aria-label="领域" style="width:auto;min-width:160px;flex:none">
+      <option value="0">全部领域</option>
+      {% for m in modules %}
+        <option value="{{ m.id }}" {{ 'selected' if module_id == m.id }}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">筛选</button>
+    {% if q or status or module_id %}<a class="btn btn-ghost" href="/events">清除</a>{% endif %}
+  </form>
+</div>
+
+{% if events %}
+<div class="surface">
+  <div class="table-wrap">
+    <table class="table table-hover table-linked">
+      <thead>
+        <tr>
+          <th>事件</th>
+          <th>领域 / 主题</th>
+          <th>状态</th>
+          <th class="num">观测</th>
+          <th>首次</th>
+          <th>最近</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+          {% set es = status_style(event.status) %}
+          <tr data-href="/events/{{ event.id }}" style="cursor:pointer">
+            <td>
+              <a href="/events/{{ event.id }}" style="color:var(--text)">{{ event.title|truncate_text(68) }}</a>
+              {% if event.legacy_import %}<span class="badge s-muted">历史导入</span>{% endif %}
+            </td>
+            <td class="small">
+              {{ event.module.name if event.module else '—' }}
+              {% if event.topic %}<div class="muted">{{ event.topic.name }}</div>{% endif %}
+            </td>
+            <td>
+              <span class="status-line"><span class="{{ es[2] }}"></span>{{ es[1] }}</span>
+            </td>
+            <td class="num">{{ event.observation_count }}</td>
+            <td class="small muted nowrap">{{ event.first_seen_date|datetext }}</td>
+            <td class="small muted nowrap">{{ event.last_seen_date|datetext }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-title">
+      {% if q or status or module_id %}没有匹配的事件{% else %}暂无情报事件{% endif %}
+    </div>
+    <p class="empty-desc">
+      {% if q or status or module_id %}
+        换一个筛选条件试试。
+      {% else %}
+        执行一次监测后，系统会自动建立可跨日追踪的情报事件。
+      {% endif %}
+    </p>
+    {% if q or status or module_id %}
+      <a class="btn" href="/events">查看全部</a>
+    {% else %}
+      <form method="post" action="/run" class="inline">
+        <button type="submit" class="btn btn-primary">立即监测</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

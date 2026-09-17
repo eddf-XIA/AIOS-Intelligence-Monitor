@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}设置 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">设置</h1>
+    <p class="page-subtitle">所有数据保存在本机，API Key 保存在系统凭据管理器中。</p>
+  </div>
+</div>
+
+{# ---------------- AI 模型 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">AI 模型</h2>
+    <div class="spacer"></div>
+    <a class="btn btn-sm" href="/settings/ai">管理</a>
+  </div>
+
+  <div class="settings-group">
+    {% if providers %}
+      {% for p in providers %}
+        <a class="settings-row settings-row-interactive" href="/settings/ai" style="color:inherit">
+          <div class="settings-row-main">
+            <div class="settings-row-title">
+              {{ p.display_name }}
+              {% if p.is_default %}<span class="badge badge-accent">默认</span>{% endif %}
+              {% if not p.enabled %}<span class="badge s-muted">已停用</span>{% endif %}
+            </div>
+            <div class="settings-row-desc mono">{{ p.default_model or '未设置模型' }}</div>
+          </div>
+          <div class="settings-row-action">
+            {% if p.is_configured %}
+              <span class="badge s-ok">已连接</span>
+            {% else %}
+              <span class="badge s-warn">未完成配置</span>
+            {% endif %}
+            {{ ui.icon('chevron-right', 'icon icon-sm muted') }}
+          </div>
+        </a>
+      {% endfor %}
+    {% else %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">尚未配置</div>
+          <div class="settings-row-desc">没有可用的 AI 模型服务，无法执行分析。</div>
+        </div>
+        <a class="btn btn-primary btn-sm" href="/settings/ai">配置</a>
+      </div>
+    {% endif %}
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-desc">
+          支持 DeepSeek、通义千问、智谱 GLM、Kimi、豆包、MiniMax、腾讯混元、百度千帆、硅基流动，
+          以及 OpenAI / Claude / Gemini / Ollama 等。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------------- 网络与数据源 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">网络与数据源</h2>
+    <span class="section-desc">决定 AIOS 向哪些公开数据源发起请求，以及请求的节奏。</span>
+  </div>
+
+  <form method="post" action="/settings/network/mode">
+    <div class="settings-group">
+      {% for mode in network.network_modes %}
+        <label class="settings-row settings-row-interactive" style="cursor:pointer">
+          <div class="settings-row-main">
+            <div class="settings-row-title">{{ mode.label }}</div>
+            <div class="settings-row-desc">{{ mode.description }}</div>
+          </div>
+          <div class="settings-row-action">
+            <input type="radio" name="mode" value="{{ mode.id }}"
+                   {{ 'checked' if network.network_mode == mode.id }}
+                   onchange="this.form.requestSubmit()">
+          </div>
+        </label>
+      {% endfor %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc">
+            自动模式会在监测开始前做一次轻量连通性检查，
+            避免为不可达的数据源反复等待超时。切换模式不需要重启。
+          </div>
+        </div>
+        <noscript><button type="submit" class="btn btn-sm">保存</button></noscript>
+      </div>
+    </div>
+  </form>
+
+  <form method="post" action="/settings/network/collectors">
+    <div class="settings-group">
+      {% for collector in network.collectors %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title">
+              {{ collector.display_name }}
+              <span class="badge s-muted">{{ network_compat(collector.network_compatibility) }}</span>
+            </div>
+            <div class="settings-row-desc">
+              {{ collector.description }}
+              {% if collector.rate_limit_policy %} · {{ collector.rate_limit_policy }}{% endif %}
+              {% if collector.collector_id == 'rss' %}
+                · 已启用 {{ collector.feed_count }} 个订阅源
+                {%- if collector.last_checked_at %} · 最近检查 {{ collector.last_checked_at|ago }}{% endif %}
+              {% endif %}
+            </div>
+          </div>
+          <div class="settings-row-action">
+            <label class="toggle">
+              <input type="checkbox" name="{{ collector.toggle_key }}"
+                     {{ 'checked' if collector.enabled }}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+      {% endfor %}
+
+      <div class="settings-row settings-row-stack">
+        <div class="settings-row-main">
+          <div class="settings-row-title">请求节奏</div>
+          <div class="settings-row-desc">
+            数据源礼貌性优先于速度。本工具每天运行一次，单次多花几分钟是可以接受的。
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:var(--space-3)">
+          <div class="field">
+            <label for="gdelt_min_interval_seconds">GDELT 最小请求间隔（秒）</label>
+            <input type="number" step="0.5" min="0" max="30"
+                   id="gdelt_min_interval_seconds" name="gdelt_min_interval_seconds"
+                   value="{{ network.gdelt_min_interval }}">
+            <div class="field-hint">全局串行，不按主题分别限流</div>
+          </div>
+          <div class="field">
+            <label for="collection_cache_ttl_minutes">检索缓存有效期（分钟）</label>
+            <input type="number" min="0" max="60"
+                   id="collection_cache_ttl_minutes" name="collection_cache_ttl_minutes"
+                   value="{{ network.cache_ttl_minutes }}">
+            <div class="field-hint">0 表示不缓存；最长 60 分钟，避免报告内容过期</div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="toggle">
+            <input type="checkbox" name="network_precheck_enabled"
+                   {{ 'checked' if settings.network_precheck_enabled in ('true', 'True', '1', True) }}>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>监测开始前先检测数据源可用性</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:var(--space-3)">
+          保存数据源设置
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {# --- 连接诊断 --- #}
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">连接诊断</div>
+        <div class="settings-row-desc">检查 AI 模型与各数据源当前是否可用。</div>
+      </div>
+      <div class="settings-row-action">
+        <button type="button" class="btn btn-sm"
+                hx-post="/settings/network/diagnose"
+                hx-target="#network-diagnostics" hx-swap="outerHTML"
+                hx-indicator="#diagnose-busy">测试连接</button>
+        <span id="diagnose-busy" class="htmx-indicator muted small">检测中…</span>
+      </div>
+    </div>
+    {% include "partials/network_diagnostics.html" %}
+  </div>
+
+  {# --- RSS / Atom 订阅源 --- #}
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">RSS / Atom 订阅源</div>
+        <div class="settings-row-desc">
+          官方博客、开源项目、技术媒体与标准组织的订阅源。
+          订阅源不依赖搜索引擎，在大陆网络环境下通常更稳定。
+        </div>
+      </div>
+    </div>
+    {% for feed in network.feeds %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13.5px">
+            {{ feed.title or feed.domain or feed.url }}
+            {% if not feed.enabled %}<span class="badge s-muted">已停用</span>{% endif %}
+          </div>
+          <div class="settings-row-desc mono">{{ feed.url|truncate_text(70) }}</div>
+        </div>
+        <div class="settings-row-action">
+          <form method="post" action="/settings/network/feeds/{{ feed.id }}/toggle" class="inline">
+            <button type="submit" class="btn btn-sm">{{ '停用' if feed.enabled else '启用' }}</button>
+          </form>
+          <form method="post" action="/settings/network/feeds/{{ feed.id }}/delete" class="inline"
+                data-confirm="删除订阅源「{{ feed.title or feed.url }}」？">
+            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+    <div class="settings-row settings-row-stack">
+      <form method="post" action="/settings/network/feeds">
+        <div class="field-row">
+          <div class="field">
+            <label for="feed-url">订阅地址</label>
+            <input type="url" id="feed-url" name="url" required
+                   placeholder="https://example.com/blog/feed.xml">
+          </div>
+          <div class="field">
+            <label for="feed-title">名称（可选）</label>
+            <input type="text" id="feed-title" name="title" placeholder="厂商官方博客">
+          </div>
+        </div>
+        <button type="submit" class="btn">添加订阅源</button>
+      </form>
+    </div>
+  </div>
+
+  {# --- 高级：连接方式 --- #}
+  <div class="settings-group">
+    <details class="disclosure">
+      <summary>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }} 高级：连接方式（{{ network.connection_description }}）
+      </summary>
+      <div class="disclosure-body">
+        <form method="post" action="/settings/network/transport">
+          <div class="field">
+            <label for="connection_mode">连接方式</label>
+            <select id="connection_mode" name="connection_mode">
+              {% for item in network.connection_modes %}
+                <option value="{{ item.id }}" {{ 'selected' if network.connection_mode == item.id }}>
+                  {{ item.label }}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="field-hint">通常保持「跟随系统设置」即可，无需配置代理。</div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="http_proxy">HTTP 代理</label>
+              <input type="text" id="http_proxy" name="http_proxy"
+                     value="{{ network.http_proxy }}" placeholder="http://127.0.0.1:7890">
+            </div>
+            <div class="field">
+              <label for="https_proxy">HTTPS 代理</label>
+              <input type="text" id="https_proxy" name="https_proxy"
+                     value="{{ network.https_proxy }}" placeholder="http://127.0.0.1:7890">
+            </div>
+          </div>
+          <div class="field-hint" style="margin-bottom:var(--space-3)">
+            如果代理地址包含账号密码，密码会存入系统凭据管理器，不会写入数据库。
+            {%- if network.proxy_username %} 当前账号：<span class="mono">{{ network.proxy_username }}</span>{% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary">保存连接方式</button>
+        </form>
+      </div>
+    </details>
+  </div>
+</div>
+
+{# ---------------- 自动监测 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">自动监测</h2>
+    <span class="section-desc">只有 AIOS 正在运行时，定时任务才会执行。</span>
+  </div>
+
+  <form method="post" action="/settings/scheduler">
+    <div class="settings-group">
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">每日自动监测</div>
+          <div class="settings-row-desc">
+            {% if scheduler.enabled and scheduler.next_run %}
+              下次执行 {{ scheduler.next_run }}
+            {% else %}
+              开启后每天在设定时间自动运行一次
+            {% endif %}
+          </div>
+        </div>
+        <label class="toggle">
+          <span class="sr-only">开启每日自动监测</span>
+          <input type="checkbox" name="enabled" {{ 'checked' if scheduler.enabled }}>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="sched-time" class="settings-row-title" style="margin:0">执行时间</label>
+        </div>
+        <div class="settings-row-action" style="width:130px">
+          <input type="time" id="sched-time" name="time" value="{{ scheduler.time }}">
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">时区</div>
+          <div class="settings-row-desc">使用本机时区，无需配置</div>
+        </div>
+        <div class="settings-row-value">{{ scheduler.timezone }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc">若到点时已有任务在执行，本次会自动跳过，不会并发执行。</div>
+        </div>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{# ---------------- Windows 自动启动 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">Windows 自动启动</h2>
+  </div>
+
+  <div class="settings-group">
+    {% if startup.supported %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">登录时启动 AIOS</div>
+          <div class="settings-row-desc">
+            开启后，登录 Windows 时自动在后台启动，不会打开浏览器。
+          </div>
+        </div>
+        <div class="settings-row-action">
+          <span class="badge {{ 's-ok' if startup.enabled else 's-muted' }}">
+            {{ '已开启' if startup.enabled else '未开启' }}
+          </span>
+          <form method="post"
+                action="/settings/startup/{{ 'disable' if startup.enabled else 'enable' }}"
+                class="inline">
+            <button type="submit" class="btn btn-sm">
+              {{ '关闭' if startup.enabled else '开启' }}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% if startup.enabled %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title">启动方式</div>
+            <div class="settings-row-desc">
+              以管理员身份运行时使用任务计划程序，否则使用启动文件夹（无需管理员权限）。
+            </div>
+          </div>
+          <div class="settings-row-value">{{ startup.mechanism_label or '—' }}</div>
+        </div>
+      {% endif %}
+      <details class="disclosure">
+        <summary>
+          {{ ui.icon('chevron-right', 'icon icon-sm') }} 启动命令
+          <span class="spacer"></span>
+          <span class="small muted">不包含任何密钥</span>
+        </summary>
+        <div class="disclosure-body">
+          <p class="mono small" style="word-break:break-all;color:var(--text-secondary)">
+            {{ startup.command }}
+          </p>
+          <p class="field-hint">
+            凭据始终在启动后从系统凭据存储读取。移动项目目录后，请先关闭再重新开启。
+          </p>
+        </div>
+      </details>
+    {% else %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">不适用</div>
+          <div class="settings-row-desc">Windows 自动启动仅适用于 Windows。</div>
+        </div>
+        <span class="badge s-muted">不可用</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ---------------- 数据与备份 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">数据与备份</h2>
+    <span class="section-desc">所有历史都在一个 SQLite 文件里，建议定期备份。</span>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">创建备份</div>
+        <div class="settings-row-desc">打包数据库与已导出的报告，运行中也能安全备份。</div>
+      </div>
+      <form method="post" action="/settings/backup" class="inline">
+        <button type="submit" class="btn">{{ ui.icon('download', 'icon icon-sm') }} 备份</button>
+      </form>
+    </div>
+    {% if backups %}
+      {% for b in backups[:5] %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title" style="font-size:13.5px">
+              <a href="/settings/backup/{{ b.name }}">{{ b.name }}</a>
+            </div>
+          </div>
+          <div class="settings-row-value small">{{ b.size_text }}</div>
+        </div>
+      {% endfor %}
+    {% endif %}
+    <details class="disclosure">
+      <summary>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }} 文件位置
+      </summary>
+      <div class="disclosure-body">
+        <table class="table">
+          <tr><td class="muted small">数据库</td><td class="mono small">{{ paths.db }}</td></tr>
+          <tr><td class="muted small">报告输出</td><td class="mono small">{{ paths.reports }}</td></tr>
+          <tr><td class="muted small">日志</td><td class="mono small">{{ paths.logs }}</td></tr>
+        </table>
+      </div>
+    </details>
+  </div>
+</div>
+
+{# ---------------- 导入历史报告 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">导入历史报告</h2>
+    <span class="section-desc">导入旧版 <span class="mono">aios_daily.py</span> 生成的审计 JSON。</span>
+  </div>
+
+  <div class="settings-group">
+    <form method="post" action="/settings/import" enctype="multipart/form-data">
+      <div class="settings-row settings-row-stack">
+        <div class="settings-row-main">
+          <label for="import-file" class="settings-row-title" style="margin:0">选择文件</label>
+          <div class="settings-row-desc">
+            报告、栏目、条目与来源都会导入；旧数据没有跨日事件历史，会标记为
+            <span class="mono">legacy_import</span>。
+          </div>
+        </div>
+        <input type="file" id="import-file" name="file" accept=".json,application/json" required>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title">覆盖同日期报告</div>
+          <div class="settings-row-desc">默认跳过已存在的日期。</div>
+        </div>
+        <label class="toggle">
+          <span class="sr-only">覆盖同日期已有报告</span>
+          <input type="checkbox" name="overwrite">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main"></div>
+        <button type="submit" class="btn btn-primary">导入</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ---------------- 高级设置 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">高级</h2>
+    <span class="section-desc">采集与事件归并参数，通常不需要调整。</span>
+  </div>
+
+  <div class="settings-group">
+    <details class="disclosure">
+      <summary>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }} 采集与事件归并
+      </summary>
+      <div class="disclosure-body">
+        <form method="post" action="/settings/collection">
+          <div class="field-row">
+            <div class="field">
+              <label for="default_lookback_days">默认回溯天数</label>
+              <input type="number" id="default_lookback_days" name="default_lookback_days"
+                     value="{{ settings.default_lookback_days }}" min="1" max="60">
+            </div>
+            <div class="field">
+              <label for="default_max_candidates">默认最大候选数</label>
+              <input type="number" id="default_max_candidates" name="default_max_candidates"
+                     value="{{ settings.default_max_candidates }}" min="1" max="100">
+            </div>
+            <div class="field">
+              <label for="fetch_body_top_n">抓取正文条数</label>
+              <input type="number" id="fetch_body_top_n" name="fetch_body_top_n"
+                     value="{{ settings.fetch_body_top_n }}" min="1" max="40">
+              <div class="field-hint">只对排序靠前的结果抓正文</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="article_max_chars">正文最大字符数</label>
+              <input type="number" id="article_max_chars" name="article_max_chars"
+                     value="{{ settings.article_max_chars }}" min="500" max="50000">
+            </div>
+            <div class="field">
+              <label for="http_timeout">HTTP 超时（秒）</label>
+              <input type="number" id="http_timeout" name="http_timeout"
+                     value="{{ settings.http_timeout }}" min="5" max="120">
+            </div>
+            <div class="field">
+              <label for="collect_workers">并发采集线程</label>
+              <input type="number" id="collect_workers" name="collect_workers"
+                     value="{{ settings.collect_workers }}" min="1" max="16">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="event_match_lookback_days">事件归并回溯天数</label>
+              <input type="number" id="event_match_lookback_days" name="event_match_lookback_days"
+                     value="{{ settings.event_match_lookback_days }}" min="1" max="365">
+              <div class="field-hint">只在该时间窗内寻找可归并的已有事件</div>
+            </div>
+            <div class="field">
+              <label for="report_output_dir">报告输出目录</label>
+              <input type="text" id="report_output_dir" name="report_output_dir"
+                     value="{{ settings.report_output_dir }}" placeholder="留空则使用 data/reports">
+            </div>
+          </div>
+          <div class="field">
+            <label class="toggle">
+              <input type="checkbox" name="event_match_enabled"
+                     {{ 'checked' if settings.event_match_enabled in ('true', 'True', '1', True) }}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span>使用 AI 判断事件归并</span>
+            </label>
+            <div class="field-hint">关闭后仅使用词汇重合度规则。</div>
+          </div>
+          <button type="submit" class="btn btn-primary">保存高级设置</button>
+        </form>
+      </div>
+    </details>
+  </div>
+</div>
+{% endblock %}

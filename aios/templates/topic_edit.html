@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.name }} · 主题配置{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/monitoring">监测配置</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <a href="/monitoring/modules/{{ topic.module_id }}">{{ topic.module.name }}</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>{{ topic.name }}</span>
+    </div>
+    <h1 class="page-title">{{ topic.name }}</h1>
+    {% if topic.description %}
+      <p class="page-subtitle">{{ topic.description }}</p>
+    {% endif %}
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="/monitoring/modules/{{ topic.module_id }}">
+      {{ ui.icon('arrow-left', 'icon icon-sm') }} 返回
+    </a>
+  </div>
+</div>
+
+{# ---------------- 基本设置 ---------------- #}
+<form method="post" action="/monitoring/topics/{{ topic.id }}">
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">启用该主题</div>
+        <div class="settings-row-desc">停用后不再参与监测。</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="enabled" {{ 'checked' if topic.enabled }}
+               aria-label="启用该主题">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </label>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <label for="name" class="settings-row-title" style="margin:0">主题名称</label>
+      </div>
+      <div class="settings-row-action" style="width:280px">
+        <input type="text" id="name" name="name" value="{{ topic.name }}" required>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <label for="description" class="settings-row-title" style="margin:0">描述</label>
+        <div class="settings-row-desc">会作为上下文提供给分析模型。</div>
+      </div>
+      <div class="settings-row-action" style="width:280px">
+        <input type="text" id="description" name="description" value="{{ topic.description }}">
+      </div>
+    </div>
+    <details class="disclosure">
+      <summary>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }} 分析补充说明
+        <span class="spacer"></span>
+        <span class="small muted">{{ '已设置' if topic.analysis_prompt else '未设置' }}</span>
+      </summary>
+      <div class="disclosure-body">
+        <textarea id="analysis_prompt" name="analysis_prompt" rows="4"
+                  placeholder="针对本主题的额外分析要求，例如「重点关注设备数量、市场份额等可核验数字」。">{{ topic.analysis_prompt }}</textarea>
+      </div>
+    </details>
+  </div>
+  <div class="btn-row" style="margin-top:var(--space-4)">
+    <button type="submit" class="btn btn-primary">保存</button>
+    <a class="btn btn-ghost" href="/monitoring/modules/{{ topic.module_id }}">取消</a>
+  </div>
+</form>
+
+{# ---------------- 检索式 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">检索式</h2>
+    <span class="section-desc">每条独立执行一次采集，结果合并去重。</span>
+  </div>
+
+  <div class="settings-group">
+    {% for query in topic.queries %}
+      <div class="settings-row settings-row-stack">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13px">
+            <span class="dot {{ 'dot-success' if query.enabled else '' }}"></span>
+            {{ '启用' if query.enabled else '已禁用' }}
+            {% if query.last_run_at %}
+              <span class="small muted">· 上次 {{ query.last_run_at|ago }} · {{ query.last_result_count }} 条</span>
+            {% endif %}
+            <span class="spacer"></span>
+          </div>
+        </div>
+        <div class="inline-form">
+          <form method="post" action="/monitoring/queries/{{ query.id }}" class="inline-form" style="flex:1">
+            <input type="text" name="query" value="{{ query.query }}" required
+                   aria-label="检索式" style="flex:1;font-family:var(--font-mono);font-size:12.5px">
+            <input type="number" name="priority" value="{{ query.priority }}" min="0" max="100"
+                   aria-label="优先级" style="width:76px;flex:none">
+            <button type="submit" class="btn btn-sm">保存</button>
+          </form>
+          <div class="menu" data-open="false">
+            <button type="button" class="btn btn-ghost btn-icon" data-menu-trigger
+                    aria-haspopup="true" aria-expanded="false" aria-label="检索式更多操作">
+              {{ ui.icon('dots', 'icon icon-sm') }}
+            </button>
+            <div class="menu-panel" role="menu">
+              <form method="post" action="/monitoring/queries/{{ query.id }}/toggle">
+                <button type="submit" class="menu-item" role="menuitem">
+                  {{ ui.icon('pause' if query.enabled else 'play', 'icon icon-sm') }}
+                  {{ '禁用' if query.enabled else '启用' }}
+                </button>
+              </form>
+              <div class="menu-sep"></div>
+              <form method="post" action="/monitoring/queries/{{ query.id }}/delete"
+                    data-confirm="删除这条检索式？">
+                <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                  {{ ui.icon('trash', 'icon icon-sm') }} 删除
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc">还没有检索式。没有检索式的主题在监测时会被跳过。</div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="settings-row">
+      <form method="post" action="/monitoring/topics/{{ topic.id }}/queries"
+            class="inline-form" style="width:100%">
+        <input type="text" name="query" placeholder="例如：OpenAI browser agent" required
+               aria-label="新增检索式">
+        <button type="submit" class="btn btn-primary">
+          {{ ui.icon('plus', 'icon icon-sm') }} 添加
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ---------------- 来源偏好 ---------------- #}
+<div class="section">
+  <div class="grid grid-2">
+    <div>
+      <div class="section-header">
+        <h2 class="section-title" style="font-size:16px">优先来源</h2>
+      </div>
+      <div class="surface surface-pad">
+        {% if topic.preferred_sources %}
+          <div class="row" style="margin-bottom:var(--space-4)">
+            {% for source in topic.preferred_sources %}
+              <span class="pill">
+                {{ source.domain }}
+                <form method="post" action="/monitoring/sources/{{ source.id }}/delete" class="inline">
+                  <input type="hidden" name="back" value="/monitoring/topics/{{ topic.id }}">
+                  <button type="submit" aria-label="移除 {{ source.domain }}">&times;</button>
+                </form>
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="small muted" style="margin-bottom:var(--space-4)">
+            未设置主题级优先来源，模块级设置仍然生效。
+          </p>
+        {% endif %}
+        <form method="post" action="/monitoring/topics/{{ topic.id }}/sources" class="inline-form">
+          <input type="text" name="domain" placeholder="developer.huawei.com" required
+                 aria-label="优先来源域名">
+          <button type="submit" class="btn">添加</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-header">
+        <h2 class="section-title" style="font-size:16px">排除关键词</h2>
+      </div>
+      <div class="surface surface-pad">
+        {% if topic.excluded_keywords %}
+          <div class="row" style="margin-bottom:var(--space-4)">
+            {% for keyword in topic.excluded_keywords %}
+              <span class="pill">
+                {{ keyword.keyword }}
+                <form method="post" action="/monitoring/exclusions/{{ keyword.id }}/delete" class="inline">
+                  <input type="hidden" name="back" value="/monitoring/topics/{{ topic.id }}">
+                  <button type="submit" aria-label="移除 {{ keyword.keyword }}">&times;</button>
+                </form>
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="small muted" style="margin-bottom:var(--space-4)">
+            标题或摘要命中的结果会被直接丢弃。
+          </p>
+        {% endif %}
+        <form method="post" action="/monitoring/topics/{{ topic.id }}/exclusions" class="inline-form">
+          <input type="text" name="keyword" placeholder="招聘" required aria-label="排除关键词">
+          <button type="submit" class="btn">添加</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

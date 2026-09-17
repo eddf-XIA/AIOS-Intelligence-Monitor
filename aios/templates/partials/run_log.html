@@ -1,0 +1,18 @@
+{#- Appendable run-log fragment.
+
+    The poller is an *empty* element at the end of the list, and the response is
+    "the new lines, then a fresh poller". Because `hx-swap="outerHTML"` replaces
+    only the poller, the new lines land in front of it and everything already on
+    screen stays. Wrapping the lines inside the polled element instead - which
+    is what this did before - silently discarded the whole history on every
+    tick, so the panel only ever showed the last two seconds of a run. -#}
+{% for line in logs %}
+  <div class="log-line {{ 'is-' ~ line.level if line.level in ('warn', 'error') }}">
+    <span class="log-time">{{ line.timestamp|localclock }}</span>
+    {%- if line.module_key %}<span class="log-scope">{{ line.module_key }}</span>{% endif -%}
+    {{ line.message }}
+  </div>
+{% endfor %}
+<div id="run-log-stream"
+     {% if poll %}hx-get="/runs/{{ run.id }}/logs?after={{ after }}"
+     hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}></div>

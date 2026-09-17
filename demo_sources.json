@@ -1,0 +1,278 @@
+{
+  "overview": {
+    "headline": {
+      "title": "Agentic OS 从“功能叠加”转向系统级执行与隔离",
+      "body": "近期值得持续跟踪的共同主线，是移动端与 PC 端都在把智能体能力下沉到操作系统层：HarmonyOS 7 扩展 Agent Framework Kit，Android 17 推进 Gemini Intelligence，Windows 则强化面向智能体的身份、隔离和执行容器。竞争焦点正从“有没有 AI 助手”转向“OS 能否安全地代表用户执行跨应用任务”。",
+      "section": "移动智能终端侧"
+    },
+    "trends": [
+      {
+        "title": "趋势一：Agent 能力成为 OS 原生接口",
+        "body": "移动端和桌面端都在把智能体从应用层入口下沉到系统能力与权限框架，未来差异化将更多来自系统调用覆盖率、权限粒度和跨应用执行可靠性。",
+        "confidence": "high"
+      },
+      {
+        "title": "趋势二：AI 基础设施竞争转向“互联 + 统一调度”",
+        "body": "超节点的价值不只在单卡算力，而在统一内存、低时延互联和集群级调度。硬件规模与系统软件协同正在成为一体化指标。",
+        "confidence": "high"
+      },
+      {
+        "title": "趋势三：自主 OS 向机器人、工业 IoT、太空算力外溢",
+        "body": "OpenHarmony/M-Robots、RISC-V+OpenHarmony 和太空操作系统标准化都说明，操作系统竞争正在从通用终端向特定物理场景延伸。",
+        "confidence": "medium"
+      }
+    ],
+    "metrics": [
+      {
+        "value": "1024卡",
+        "label": "Atlas 950 SuperPoD 真机集群规模",
+        "section": "智算超节点侧"
+      },
+      {
+        "value": "750+套",
+        "label": "昇腾384超节点已部署规模（华为口径）",
+        "section": "智算超节点侧"
+      },
+      {
+        "value": "10 Tokens/J",
+        "label": "太空算力云披露的大模型推理能效比",
+        "section": "太空智算侧"
+      },
+      {
+        "value": "≤1μs",
+        "label": "M-Robots OS 2.0 披露的中断/任务切换时延",
+        "section": "具身智能侧"
+      }
+    ]
+  },
+  "sections": [
+    {
+      "section": "移动智能终端侧",
+      "status": "new",
+      "_evidence": [
+        {
+          "source": "华为",
+          "published_at": "2026-09-07",
+          "url": "https://consumer.huawei.com/cn/harmonyos-7/"
+        },
+        {
+          "source": "Google",
+          "published_at": "2026-09-01",
+          "url": "https://blog.google/products-and-platforms/platforms/android/android-drop-september-2026/"
+        },
+        {
+          "source": "Google",
+          "published_at": "2026-06-16",
+          "url": "https://blog.google/products-and-platforms/platforms/android/android-17-features/"
+        }
+      ],
+      "items": [
+        {
+          "tag": "鸿蒙",
+          "title": "HarmonyOS 7 公测启动，Agent 能力继续系统化下沉",
+          "summary": "华为于 9 月 7 日开启 HarmonyOS 7 首批公测。开发者侧 26.0.0 API 已出现 Agent Framework Kit 等新增能力，反映智能体不再只是单一助手入口，而是在向系统级框架演进。",
+          "assessment": "判断：移动 OS 的竞争重点正在从生成式功能数量，转向系统能力是否能被智能体稳定、安全地编排。",
+          "confidence": "high",
+          "source_ids": [
+            0
+          ]
+        },
+        {
+          "tag": "安卓",
+          "title": "Android 17 与 9 月 Android Drop 延续 Gemini 系统级渗透",
+          "summary": "Android 17 已将 Gemini Intelligence 纳入高阶设备路线；9 月 Android Drop 又加入物品位置记忆、Guided Vision 等能力，显示 Gemini 正继续与系统服务融合。",
+          "assessment": "判断：Google 的路径更像是在既有 Android 权限与服务框架上逐步扩大 Gemini 的可调用边界。",
+          "confidence": "high",
+          "source_ids": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "section": "PC 侧",
+      "status": "new",
+      "_evidence": [
+        {
+          "source": "Microsoft",
+          "published_at": "2026-09-04",
+          "url": "https://blogs.windows.com/windowsdeveloper/2026/09/04/announcing-project-zenith-the-ready-to-code-windows-experience/"
+        }
+      ],
+      "items": [
+        {
+          "tag": "Windows",
+          "title": "Project Zenith 把开发者 PC 与安全智能体执行环境绑定",
+          "summary": "微软 9 月 4 日公布 Project Zenith，面向高统一内存带宽的开发者级设备提供预配置 Windows 开发体验，并强调 OS 级身份、Microsoft Execution Containers 与企业管理能力，为本地 Agent 开发提供安全基础。",
+          "assessment": "判断：AI PC 的竞争正从 NPU 参数进入“本地模型 + Agent 执行隔离 + 开发工作流”组合阶段。",
+          "confidence": "high",
+          "source_ids": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "section": "服务器侧",
+      "status": "new",
+      "_evidence": [
+        {
+          "source": "openEuler",
+          "published_at": "2026-09-05",
+          "url": "https://mailweb.openeuler.org/archives/list/dev%40openeuler.org/thread/5IEWHTZQUY36VQFZS3ATXWGHYEK26JEA/"
+        },
+        {
+          "source": "openEuler",
+          "published_at": "2026-09-07",
+          "url": "https://mailweb.openeuler.org/hyperkitty/list/dev%40openeuler.org/latest"
+        }
+      ],
+      "items": [
+        {
+          "tag": "openEuler",
+          "title": "openEuler 进入 9 月密集更新与 26.09 版本收敛阶段",
+          "summary": "openEuler 社区 9 月初发布 20.03/22.03/24.03 多个 LTS 分支的 20260831 更新公告，同时推进 openEuler-26.09 DevStation RC4 验证，重点仍是稳定性、组件修复和发行质量收敛。",
+          "assessment": "判断：服务器 OS 的 AI 化不是替代传统发行工程，而是叠加在长期维护、兼容性与异构算力支持之上。",
+          "confidence": "high",
+          "source_ids": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "section": "智算超节点侧",
+      "status": "watch",
+      "_evidence": [
+        {
+          "source": "华为",
+          "published_at": "2026-07-17",
+          "url": "https://www.huawei.com/cn/news/2026/7/atlas-950-superpod"
+        }
+      ],
+      "items": [
+        {
+          "tag": "超节点",
+          "title": "Atlas 950 SuperPoD 继续作为国产超节点路线的关键观察对象",
+          "summary": "华为在 2026 WAIC 展示 1024 卡 Atlas 950 SuperPoD 真机，披露 256TB 全局统一内存、3μs RTT、1 EFLOPS FP8 等指标；同时称昇腾384超节点已部署 750+ 套。",
+          "assessment": "判断：行业比较维度正在由“单芯片峰值”转向超节点内部互联、统一寻址、调度效率和实际交付规模。",
+          "confidence": "high",
+          "source_ids": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "section": "物联网侧",
+      "status": "new",
+      "_evidence": [
+        {
+          "source": "深圳市物联网产业协会/物联网世界",
+          "published_at": "2026-09-08",
+          "url": "https://www.iotworld.com.cn/html/News/202609/c9310e89e85eeb71.shtml"
+        }
+      ],
+      "items": [
+        {
+          "tag": "OpenHarmony",
+          "title": "RISC-V + OpenHarmony 向工业 IoT 商用闭环推进",
+          "summary": "9 月深圳相关产业活动继续围绕 RISC-V 与 OpenHarmony 的芯片、模组和工业场景适配展开。公开材料显示，双方生态此前已成立联合工作组，适配目标正从 MCU 扩展到更高性能处理器。",
+          "assessment": "判断：下一阶段看点不是“能否跑起来”，而是工业工具链成熟度、协议实时性和规模化交付成本。",
+          "confidence": "medium",
+          "source_ids": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "section": "无人飞行器侧",
+      "status": "watch",
+      "_evidence": [
+        {
+          "source": "第一财经/英飞凌信息",
+          "published_at": "2026-08-20",
+          "url": "https://www.yicai.com/brief/103326827.html"
+        },
+        {
+          "source": "RT-Thread",
+          "published_at": "2026-08-06",
+          "url": "https://club.rt-thread.org/ask/articles?category=2"
+        }
+      ],
+      "items": [
+        {
+          "tag": "AI飞控",
+          "title": "Edgi-X 展示“实时 OS + 边缘 AI + 飞控”融合方向",
+          "summary": "英飞凌与 RT-Thread、释云科技发布 Edgi-X 全域智能无人载具控制器，基于 PSOC Edge E83 异构双核，覆盖无人机、无人车和无人船等运动控制场景。",
+          "assessment": "判断：无人系统软件栈正在把实时控制与边缘感知推理合并到同一计算平台，飞控 OS 的边界因此扩大。",
+          "confidence": "medium",
+          "source_ids": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "section": "具身智能侧",
+      "status": "watch",
+      "_evidence": [
+        {
+          "source": "开放原子开源基金会",
+          "published_at": "2026-05-25",
+          "url": "https://www.openatom.org/journalism/detail/GoUTwn6XQb6L"
+        },
+        {
+          "source": "ROSCon",
+          "published_at": "2026-09",
+          "url": "https://roscon.ros.org/?page_id=14"
+        }
+      ],
+      "items": [
+        {
+          "tag": "机器人OS",
+          "title": "M-Robots OS 2.0 强调多机协同、实时性与 ROS 兼容",
+          "summary": "M-Robots OS 2.0 基于 OpenHarmony，公开材料强调软硬件解耦、混合内核、M-DDS 低时延协同、AI Agent 多智能体能力，并兼容 ROS1/ROS2 等中间件。",
+          "assessment": "判断：机器人 OS 的竞争点逐渐从单机控制框架扩展到异构多机协同、实时控制与 Agent 编排的统一底座。",
+          "confidence": "high",
+          "source_ids": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "section": "太空智算侧",
+      "status": "watch",
+      "_evidence": [
+        {
+          "source": "科技日报/人民网",
+          "published_at": "2026-08-31",
+          "url": "https://kpzg.people.com.cn/n1/2026/0831/c404214-40789141.html"
+        },
+        {
+          "source": "科技日报",
+          "published_at": "2026-06-29",
+          "url": "https://www.stdaily.com/web/gdxw/2026-06/29/content_539245.html"
+        }
+      ],
+      "items": [
+        {
+          "tag": "太空OS",
+          "title": "太空算力云从在轨试验走向常态化服务",
+          "summary": "北邮牵头的太空算力云已常态化提供在轨试验服务，打通卫星、太空服务器、地面站与数据中心的任务编排和算力调度；此前国内还发布了太空操作系统开源标准体系。",
+          "assessment": "判断：太空计算的软件焦点正在从单星载荷软件转向可调度、可复用、可运营的星地一体基础设施。",
+          "confidence": "high",
+          "source_ids": [
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

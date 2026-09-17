@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title|truncate_text(36) }} · 情报事件{% endblock %}
+
+{% block content %}
+{% set es = status_style(event.status) %}
+
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/events">情报事件</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>{{ event.title|truncate_text(30) }}</span>
+    </div>
+    <h1 class="page-title">{{ event.title }}</h1>
+    <p class="page-subtitle">
+      <span class="status-line"><span class="{{ es[2] }}"></span>{{ es[1] }}</span>
+      · 首次出现 {{ event.first_seen_date|cn_date or '—' }}
+      · 最近更新 {{ event.last_seen_date|cn_date or '—' }}
+      · {{ event.observation_count }} 次观测
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="/events">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回</a>
+  </div>
+</div>
+
+<div class="settings-group" style="margin-bottom:var(--space-6)">
+  <div class="settings-row">
+    <div class="settings-row-main">
+      <div class="settings-row-title">监测领域</div>
+    </div>
+    <div class="settings-row-value">
+      {{ event.module.name if event.module else '—' }}
+      {%- if event.topic %} · {{ event.topic.name }}{% endif %}
+    </div>
+  </div>
+  {% if event.summary %}
+    <div class="settings-row settings-row-stack">
+      <div class="settings-row-main">
+        <div class="settings-row-title">当前摘要</div>
+      </div>
+      <p class="secondary" style="font-size:13.5px;line-height:1.7">{{ event.summary }}</p>
+    </div>
+  {% endif %}
+  <div class="settings-row">
+    <div class="settings-row-main">
+      <div class="settings-row-title">追踪状态</div>
+      <div class="settings-row-desc mono">{{ event.event_key }}</div>
+    </div>
+    <div class="settings-row-action">
+      <form method="post" action="/events/{{ event.id }}/status" class="inline-form">
+        <select name="status" aria-label="事件状态" style="width:auto;min-width:130px">
+          <option value="active" {{ 'selected' if event.status == 'active' }}>追踪中</option>
+          <option value="watching" {{ 'selected' if event.status == 'watching' }}>观察中</option>
+          <option value="resolved" {{ 'selected' if event.status == 'resolved' }}>已结束</option>
+          <option value="archived" {{ 'selected' if event.status == 'archived' }}>已归档</option>
+        </select>
+        <button type="submit" class="btn">更新</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">时间线</h2>
+    <span class="section-desc">{{ event.observations|length }} 次观测，最新在前</span>
+  </div>
+
+  {% if event.observations %}
+    <div class="timeline">
+      {% for obs in event.observations|reverse %}
+        <div class="timeline-entry {{ 'is-past' if not loop.first }}">
+          <div class="timeline-date">
+            {{ obs.observation_date|cn_date }}
+            {% if loop.first %}<span class="badge badge-accent">最新</span>{% endif %}
+            {% if obs.is_correction %}<span class="badge badge-correction">数据修正</span>{% endif %}
+            <span class="muted" style="font-weight:400">
+              置信度 {{ {'high': '高', 'medium': '中', 'low': '低'}.get(obs.confidence, obs.confidence) }}
+            </span>
+          </div>
+
+          <div class="surface surface-pad">
+            <h3 style="font-size:15px;margin-bottom:var(--space-2)">{{ obs.title }}</h3>
+            <p class="secondary" style="font-size:13.5px;line-height:1.75">{{ obs.fact_summary }}</p>
+
+            {% if obs.assessment %}
+              <div class="finding-assessment"><strong>情报判断</strong> · {{ obs.assessment }}</div>
+            {% endif %}
+
+            {% if obs.metrics %}
+              <div class="finding-metrics">
+                {% for key, entry in obs.metrics.items() %}
+                  {% if entry is mapping and (entry.display or entry.value) %}
+                    <div class="finding-metric">
+                      <div class="finding-metric-label">{{ key }}</div>
+                      <div class="finding-metric-value">
+                        {{ entry.display or entry.value }}{{ ' ' ~ entry.unit if entry.unit }}
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if obs.sources %}
+              {% set articles = obs.sources | map(attribute='article') | select | list %}
+              {% if articles %}
+                <div class="sources">
+                  <span class="sources-label">来源</span>
+                  {% for article in articles[:4] %}
+                    <a class="source-chip" href="{{ article.url }}" target="_blank" rel="noopener">
+                      {{ ui.icon('link', 'icon icon-sm') }}
+                      {{ (article.source or article.domain or '来源')|truncate_text(24) }}
+                    </a>
+                  {% endfor %}
+                  {% if articles|length > 4 %}
+                    <span class="source-chip">另 {{ articles|length - 4 }} 个</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state empty-state-compact">
+      <div class="empty-title">暂无观测记录</div>
+      <p class="empty-desc">该事件还没有任何观测。</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}{{ module.name }} · 监测配置{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/monitoring">监测配置</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>{{ module.name }}</span>
+    </div>
+    <h1 class="page-title">{{ module.name }}</h1>
+    {% if module.description %}
+      <p class="page-subtitle">{{ module.description }}</p>
+    {% endif %}
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="/monitoring">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回</a>
+  </div>
+</div>
+
+{# ---------------- 状态 ---------------- #}
+<div class="settings-group">
+  <div class="settings-row">
+    <div class="settings-row-main">
+      <div class="settings-row-title">启用该模块</div>
+      <div class="settings-row-desc">停用后不再参与监测，历史报告不受影响。</div>
+    </div>
+    <div class="settings-row-action">
+      <form method="post" action="/monitoring/modules/{{ module.id }}/toggle" class="inline">
+        <button type="submit" class="btn btn-sm">{{ '停用' if module.enabled else '启用' }}</button>
+      </form>
+      <span class="badge {{ 's-ok' if module.enabled else 's-muted' }}">
+        {{ '已启用' if module.enabled else '已停用' }}
+      </span>
+    </div>
+  </div>
+  <div class="settings-row">
+    <div class="settings-row-main">
+      <div class="settings-row-title">模块标识</div>
+      <div class="settings-row-desc">内部引用名，出现在事件 key 与审计文件中。</div>
+    </div>
+    <div class="settings-row-value mono">{{ module.key }}</div>
+  </div>
+</div>
+
+{# ---------------- 主题 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">主题</h2>
+    <span class="section-desc">{{ topics|length }} 个主题 · {{ module.query_count }} 条检索式</span>
+    <div class="spacer"></div>
+    <a class="btn btn-sm btn-primary" href="/monitoring/ai/modules/{{ module.id }}/topic">
+      {{ ui.icon('plus', 'icon icon-sm') }} AI 添加主题
+    </a>
+    <a class="btn btn-sm" href="#add-topic">{{ ui.icon('edit', 'icon icon-sm') }} 手动添加主题</a>
+  </div>
+
+  {% for finding in diagnostics %}
+    <div class="flash flash-{{ 'warn' if finding.level == 'warn' else 'ok' }}"
+         role="status" style="margin-bottom:var(--space-3)">
+      {{ ui.icon('alert' if finding.level == 'warn' else 'info', 'icon icon-sm') }}
+      <span>{{ finding.message }}</span>
+    </div>
+  {% endfor %}
+
+  {% if topics %}
+    <div class="settings-group">
+      {% for topic in topics %}
+        {% include "partials/topic_row.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state empty-state-compact">
+      <div class="empty-title">暂无主题</div>
+      <p class="empty-desc">没有主题的模块在监测时会被跳过。</p>
+      <a class="btn btn-primary" href="/monitoring/ai/modules/{{ module.id }}/topic">AI 添加主题</a>
+      <a class="btn" href="#add-topic">手动添加</a>
+    </div>
+  {% endif %}
+</div>
+
+{# ---------------- 监测参数 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">监测参数</h2>
+  </div>
+  <form method="post" action="/monitoring/modules/{{ module.id }}">
+    <input type="hidden" name="enabled" value="{{ 'on' if module.enabled else '' }}">
+    <div class="settings-group">
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="name" class="settings-row-title" style="margin:0">名称</label>
+          <div class="settings-row-desc">显示在导航、报告栏目与对比页中。</div>
+        </div>
+        <div class="settings-row-action" style="width:280px">
+          <input type="text" id="name" name="name" value="{{ module.name }}" required>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="key" class="settings-row-title" style="margin:0">标识</label>
+          <div class="settings-row-desc">小写字母、数字、- 或 _</div>
+        </div>
+        <div class="settings-row-action" style="width:280px">
+          <input type="text" id="key" name="key" value="{{ module.key }}" required>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="description" class="settings-row-title" style="margin:0">描述</label>
+        </div>
+        <div class="settings-row-action" style="width:280px">
+          <input type="text" id="description" name="description" value="{{ module.description }}">
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="lookback_days" class="settings-row-title" style="margin:0">回溯天数</label>
+          <div class="settings-row-desc">每次监测检索多久之内的内容。</div>
+        </div>
+        <div class="settings-row-action" style="width:120px">
+          <input type="number" id="lookback_days" name="lookback_days"
+                 value="{{ module.lookback_days }}" min="1" max="60">
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="max_candidates" class="settings-row-title" style="margin:0">最大候选数</label>
+          <div class="settings-row-desc">送入模型分析的来源上限。</div>
+        </div>
+        <div class="settings-row-action" style="width:120px">
+          <input type="number" id="max_candidates" name="max_candidates"
+                 value="{{ module.max_candidates }}" min="1" max="100">
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="max_report_items" class="settings-row-title" style="margin:0">入报上限</label>
+          <div class="settings-row-desc">本模块每期最多进入日报的条目数。</div>
+        </div>
+        <div class="settings-row-action" style="width:120px">
+          <input type="number" id="max_report_items" name="max_report_items"
+                 value="{{ module.max_report_items }}" min="1" max="10">
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <label for="sort_order" class="settings-row-title" style="margin:0">排序</label>
+          <div class="settings-row-desc">数值越小越靠前。</div>
+        </div>
+        <div class="settings-row-action" style="width:120px">
+          <input type="number" id="sort_order" name="sort_order" value="{{ module.sort_order }}">
+        </div>
+      </div>
+
+      <details class="disclosure">
+        <summary>
+          {{ ui.icon('chevron-right', 'icon icon-sm') }} 分析补充说明
+          <span class="spacer"></span>
+          <span class="small muted">{{ '已设置' if module.analysis_prompt else '未设置' }}</span>
+        </summary>
+        <div class="disclosure-body">
+          <textarea id="analysis_prompt" name="analysis_prompt" rows="4"
+                    placeholder="附加到本模块所有主题的分析指令，例如「特别关注官方开发者文档的接口变更」。留空则使用默认提示词。">{{ module.analysis_prompt }}</textarea>
+          <div class="field-hint">
+            这段文字会追加到模型的分析提示中；事实与研判分离等核心约束始终生效，无法被覆盖。
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="btn-row" style="margin-top:var(--space-4)">
+      <button type="submit" class="btn btn-primary">保存</button>
+      <a class="btn btn-ghost" href="/monitoring">取消</a>
+    </div>
+  </form>
+</div>
+
+{# ---------------- 优先来源 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">优先来源</h2>
+    <span class="section-desc">这些域名在排序中优先于聚合站与转载；排序由规则决定，模型不参与打分。</span>
+  </div>
+  <div class="surface surface-pad">
+    {% if module.preferred_sources %}
+      <div class="row" style="margin-bottom:var(--space-4)">
+        {% for source in module.preferred_sources %}
+          <span class="pill">
+            {{ source.domain }}
+            <form method="post" action="/monitoring/sources/{{ source.id }}/delete" class="inline">
+              <input type="hidden" name="back" value="/monitoring/modules/{{ module.id }}">
+              <button type="submit" aria-label="移除 {{ source.domain }}">&times;</button>
+            </form>
+          </span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="small muted" style="margin-bottom:var(--space-4)">尚未设置。</p>
+    {% endif %}
+    <form method="post" action="/monitoring/modules/{{ module.id }}/sources" class="inline-form">
+      <input type="text" name="domain" placeholder="huawei.com" required aria-label="优先来源域名">
+      <button type="submit" class="btn">添加</button>
+    </form>
+  </div>
+</div>
+
+{# ---------------- 手动新增主题 ---------------- #}
+<div class="section" id="add-topic">
+  <div class="section-header">
+    <h2 class="section-title">手动新增主题</h2>
+    <span class="section-desc">
+      也可以用 <a href="/monitoring/ai/modules/{{ module.id }}/topic">AI 添加主题</a>
+      一句话生成检索式与来源建议。
+    </span>
+  </div>
+  <div class="surface surface-pad">
+    <form method="post" action="/monitoring/modules/{{ module.id }}/topics">
+      <div class="field-row">
+        <div class="field">
+          <label for="topic-name">主题名称</label>
+          <input type="text" id="topic-name" name="name" placeholder="AI Browser" required>
+        </div>
+        <div class="field">
+          <label for="topic-desc">描述</label>
+          <input type="text" id="topic-desc" name="description" placeholder="该主题的监测范围">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">新增主题</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

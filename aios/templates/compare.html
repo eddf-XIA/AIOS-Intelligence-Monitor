@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}对比 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">报告对比</h1>
+    <p class="page-subtitle">按情报事件对比，而不是按文本或页面对比。</p>
+  </div>
+</div>
+
+<div class="surface surface-pad" style="margin-bottom:var(--space-6)">
+  <form method="get" action="/compare" class="inline-form" style="align-items:flex-end">
+    <div class="field" style="margin:0;flex:1;min-width:170px">
+      <label for="date_a">较早一期</label>
+      <input type="date" id="date_a" name="date_a" value="{{ date_a }}" list="report-dates" required>
+    </div>
+    <div class="field" style="margin:0;flex:none;padding-bottom:9px;color:var(--text-muted)">
+      {{ ui.icon('arrow-right') }}
+    </div>
+    <div class="field" style="margin:0;flex:1;min-width:170px">
+      <label for="date_b">较新一期</label>
+      <input type="date" id="date_b" name="date_b" value="{{ date_b }}" list="report-dates" required>
+    </div>
+    <button type="submit" class="btn btn-primary">对比</button>
+  </form>
+  <datalist id="report-dates">
+    {% for d in available %}<option value="{{ d|datetext }}"></option>{% endfor %}
+  </datalist>
+</div>
+
+{% if error %}
+  <div class="empty-state">
+    <div class="empty-title">无法对比</div>
+    <p class="empty-desc">{{ error }}</p>
+    {% if not available %}
+      <form method="post" action="/run" class="inline">
+        <button type="submit" class="btn btn-primary">立即监测</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if result and not result.error %}
+  {% set s = result.summary %}
+
+  <div class="metric-group">
+    <div class="metric">
+      <div class="metric-label">新增事件</div>
+      <div class="metric-value{% if not s.NEW %} is-muted{% endif %}" style="color:{{ 'var(--success-text)' if s.NEW else '' }}">{{ s.NEW }}</div>
+      <div class="metric-note">首次出现</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">更新事件</div>
+      <div class="metric-value{% if not (s.UPDATED + s.DATA_CHANGE) %} is-muted{% endif %}">{{ s.UPDATED + s.DATA_CHANGE }}</div>
+      <div class="metric-note">其中 {{ s.DATA_CHANGE }} 项数据变化</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">数据修正</div>
+      <div class="metric-value{% if not s.CORRECTION %} is-muted{% endif %}" style="color:{{ 'var(--warning-text)' if s.CORRECTION else '' }}">{{ s.CORRECTION }}</div>
+      <div class="metric-note">来源更正了此前数字</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">无变化</div>
+      <div class="metric-value is-muted">{{ s.UNCHANGED }}</div>
+      <div class="metric-note">{% if s.RESOLVED %}另有 {{ s.RESOLVED }} 项不再跟踪{% else %}延续观察{% endif %}</div>
+    </div>
+  </div>
+
+  {% if result.diffs %}
+    {% for module_name, diffs in result.by_module() %}
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">{{ module_name }}</h2>
+          <span class="section-desc">{{ diffs|length }} 个事件</span>
+        </div>
+        <div class="surface">
+          {% for diff in diffs %}
+            {% include "partials/event_diff.html" %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state empty-state-compact">
+      <div class="empty-title">没有可比较的事件</div>
+      <p class="empty-desc">两份报告之间没有共同或新增的情报事件。</p>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

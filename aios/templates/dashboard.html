@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}概览 · {{ app_name }}{% endblock %}
+
+{% block content %}
+{% set style = status_style(last_run.status) if last_run else None %}
+
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">概览</h1>
+    <p class="page-subtitle">
+      {{ today()|cn_date }} · {{ today()|weekday }}
+      {%- if last_run %} · 上次监测 {{ last_run.finished_at|ago or (last_run.started_at|ago) }}{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if last_run and last_run.is_active %}
+      <a class="btn" href="/runs/{{ last_run.id }}">查看进度</a>
+    {% endif %}
+    <form method="post" action="/run" class="inline">
+      <button type="submit" class="btn btn-primary btn-lg" {% if busy %}disabled{% endif %}>
+        {{ ui.icon('play', 'icon icon-sm') }}
+        {% if busy %}监测中{% else %}立即监测{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if not llm.configured %}
+  <div class="flash flash-warn" role="status">
+    {{ ui.icon('alert', 'icon icon-sm') }}
+    <span>尚未配置可用的 AI 模型，无法执行分析。<a href="/settings/ai">前往配置</a></span>
+  </div>
+{% endif %}
+
+{# --- 今日情报：真实数据，不是装饰性 KPI 墙 --- #}
+{% if last_run %}
+<div class="metric-group" id="overview-metrics">
+  <div class="metric metric-accent">
+    <div class="metric-label">今日情报</div>
+    <div class="metric-value">{{ last_run.total_report_items }}</div>
+    <div class="metric-note">
+      {% if latest_report %}{{ latest_report.report_date|cn_date }}日报{% else %}尚未生成日报{% endif %}
+    </div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">新增事件</div>
+    <div class="metric-value{% if not last_run.total_new_events %} is-muted{% endif %}">{{ last_run.total_new_events }}</div>
+    <div class="metric-note">首次出现</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">持续追踪</div>
+    <div class="metric-value{% if not last_run.total_updated_events %} is-muted{% endif %}">{{ last_run.total_updated_events }}</div>
+    <div class="metric-note">已有事件的新进展</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">采集来源</div>
+    <div class="metric-value is-muted">{{ last_run.total_articles }}</div>
+    <div class="metric-note">
+      {{ totals.events }} 个事件在库
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="split section">
+  {# ---------------- 最新情报 ---------------- #}
+  <div>
+    <div class="section-header">
+      <h2 class="section-title">最新情报</h2>
+      {% if latest_report %}
+        <span class="section-desc">{{ latest_report.report_date|datetext }}</span>
+      {% endif %}
+      <div class="spacer"></div>
+      {% if latest_report %}
+        <a class="btn btn-ghost btn-sm" href="/reports/{{ latest_report.id }}">
+          查看日报 {{ ui.icon('chevron-right', 'icon icon-sm') }}
+        </a>
+      {% endif %}
+    </div>
+
+    {% if recent_findings %}
+      <div class="surface">
+        {% for row in recent_findings %}
+          {% set item = row.item %}
+          <a class="row-link data-row" href="{{ '/events/' ~ row.event_id if row.event_id else '/reports/' ~ latest_report.id }}">
+            <span class="badge badge-{{ row.state }}">{{ '新增' if row.state == 'new' else '更新' }}</span>
+            <span class="data-row-main">
+              <span class="data-row-title">{{ item.title|truncate_text(64) }}</span>
+              <span class="data-row-meta">
+                <span>{{ row.module_name }}</span>
+                {% if row.source %}<span class="dot-sep">·</span><span>{{ row.source|truncate_text(22) }}</span>{% endif %}
+                {% set n = source_count(item) %}
+                {% if n > 1 %}<span class="dot-sep">·</span><span>{{ n }} 个来源</span>{% endif %}
+              </span>
+            </span>
+            <span class="data-row-side">
+              {{ ui.icon('chevron-right', 'icon icon-sm muted') }}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state empty-state-compact">
+        <div class="empty-title">暂无情报</div>
+        <p class="empty-desc">完成第一次监测后，这里会显示当日的情报条目。</p>
+        <form method="post" action="/run" class="inline">
+          <button type="submit" class="btn btn-primary" {% if busy %}disabled{% endif %}>立即监测</button>
+        </form>
+      </div>
+    {% endif %}
+
+    {# --- 与上一份报告的差异 --- #}
+    {% if daily_diff and not daily_diff.error %}
+      {% set s = daily_diff.summary %}
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">较上一期</h2>
+          <span class="section-desc">{{ daily_diff.date_a|cn_date }} → {{ daily_diff.date_b|cn_date }}</span>
+          <div class="spacer"></div>
+          <a class="btn btn-ghost btn-sm"
+             href="/compare?date_a={{ daily_diff.date_a|datetext }}&date_b={{ daily_diff.date_b|datetext }}">
+            完整对比 {{ ui.icon('chevron-right', 'icon icon-sm') }}
+          </a>
+        </div>
+        <div class="surface surface-pad">
+          <div class="row" style="gap:var(--space-6)">
+            <span class="status-line"><span class="badge badge-new">新增</span> {{ s.NEW }} 条</span>
+            <span class="status-line"><span class="badge badge-updated">更新</span> {{ s.UPDATED + s.DATA_CHANGE }} 条</span>
+            {% if s.CORRECTION %}
+              <span class="status-line"><span class="badge badge-correction">数据修正</span> {{ s.CORRECTION }} 条</span>
+            {% endif %}
+            <span class="status-line muted">无变化 {{ s.UNCHANGED }} 条</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {# ---------------- 侧栏：运行状态 / 监测健康 / 模型 ---------------- #}
+  <div class="stack">
+    <div class="surface" id="run-status-host">
+      <div class="surface-title">
+        监测状态
+        <div class="spacer"></div>
+        {% if last_run %}<a class="small" href="/runs/{{ last_run.id }}">详情</a>{% endif %}
+      </div>
+      {#- The partial speaks in `run`/`poll`/`duration`; the dashboard context
+          calls the same things `last_run`/`run_duration`. Bind them here so the
+          first render matches what the polling endpoint later swaps in. -#}
+      {% with run = last_run, module_runs = module_runs, compact = true,
+              poll = (last_run and last_run.is_active), duration = run_duration %}
+        {% include "partials/run_status.html" %}
+      {% endwith %}
+    </div>
+
+    <div class="surface">
+      <div class="surface-title">
+        监测模块
+        <div class="spacer"></div>
+        <a class="small" href="/monitoring">配置</a>
+      </div>
+      {% if module_health %}
+        <div>
+          {% for m in module_health %}
+            {% set ms = status_style(m.status) %}
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title" style="font-size:13.5px">
+                  <span class="{{ ms[2] }}"></span>{{ m.name }}
+                </div>
+                <div class="settings-row-desc">
+                  {{ m.topics }} 主题 · {{ m.queries }} 检索式
+                  {%- if m.articles %} · {{ m.articles }} 篇来源{% endif %}
+                  {%- if m.findings %} · {{ m.findings }} 条入报{% endif %}
+                </div>
+              </div>
+              <div class="settings-row-value small">{{ ms[1] }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="surface-pad muted small">没有启用的监测模块。</div>
+      {% endif %}
+    </div>
+
+    <div class="surface">
+      <div class="surface-title">
+        AI 模型
+        <div class="spacer"></div>
+        <a class="small" href="/settings/ai">管理</a>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          {% if llm.configured %}
+            <div class="settings-row-title" style="font-size:13.5px">{{ llm.default_name }}</div>
+            <div class="settings-row-desc mono">{{ llm.default_model }}</div>
+          {% else %}
+            <div class="settings-row-title" style="font-size:13.5px">尚未配置</div>
+            <div class="settings-row-desc">配置后才能执行分析</div>
+          {% endif %}
+        </div>
+        {% if llm.configured %}
+          <span class="badge s-ok">已连接</span>
+        {% else %}
+          <a class="btn btn-sm" href="/settings/ai">配置</a>
+        {% endif %}
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13.5px">自动监测</div>
+          <div class="settings-row-desc">
+            {% if scheduler.enabled %}
+              每天 {{ scheduler.time }}{% if scheduler.next_run %} · 下次 {{ scheduler.next_run }}{% endif %}
+            {% else %}
+              目前只能手动执行
+            {% endif %}
+          </div>
+        </div>
+        <span class="badge {{ 's-ok' if scheduler.enabled else 's-muted' }}">
+          {{ '已开启' if scheduler.enabled else '未开启' }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

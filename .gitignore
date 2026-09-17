@@ -1,0 +1,65 @@
+# AIOS Intelligence Monitor - developer and build outputs.
+#
+# Nothing here belongs in the repository: release/ alone is ~100 MB per build,
+# and data/ holds the developer's own database, reports and logs.
+
+# --- build and release output ---
+release/
+.build_cache/
+
+# --- Python bytecode and tool caches ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- application runtime data (created on first run, never shared) ---
+# The database, exported reports and logs are per-machine state.
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# --- generated intelligence reports ---
+# Real monitoring output: scraped article text, AI assessments and the source
+# evidence behind them. Produced by a run, never source, and not ours to
+# republish.
+AIOS监测日报-*.html
+AIOS监测日报-*.json
+*-demo.html
+
+# --- developer-only local helpers ---
+# Contains a hard-coded absolute path to one developer's working copy.
+CC Launch.bat
+
+# --- superseded packaging tooling and its developer notes ---
+# Build_Release.bat + tools/packaging/ is the supported path. These predate it;
+# PACKAGING_README_CN.txt still instructs the reader to run the old builder and
+# README_FIX_CN.txt is a changelog of packaging bugs already fixed.
+Build_AIOS_Portable.bat
+build_aios_portable.ps1
+PACKAGING_README_CN.txt
+README_FIX_CN.txt
+
+# --- credentials ---
+# API keys live in the Windows credential manager, never in the repo; this is
+# a backstop in case a local .env is ever used.
+.env
+.env.*
+!.env.example
+
+# --- virtual environments ---
+.venv/
+venv/
+env/
+
+# --- editor / OS noise ---
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/

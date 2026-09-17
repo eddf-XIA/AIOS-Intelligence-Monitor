@@ -1,0 +1,78 @@
+{% import "_icons.html" as ui with context %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+{% include "_icons.html" %}
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">AI</span>
+      <span class="brand-text">
+        <span class="brand-name">AIOS</span>
+        <span class="brand-sub">情报监测</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      <a class="nav-item" href="/" {% if nav == 'dashboard' %}aria-current="page"{% endif %}>
+        {{ ui.icon('overview') }}<span>概览</span>
+      </a>
+      <a class="nav-item" href="/monitoring" {% if nav == 'monitoring' %}aria-current="page"{% endif %}>
+        {{ ui.icon('monitoring') }}<span>监测配置</span>
+      </a>
+      <a class="nav-item" href="/events" {% if nav == 'events' %}aria-current="page"{% endif %}>
+        {{ ui.icon('intelligence') }}<span>情报事件</span>
+      </a>
+      <a class="nav-item" href="/reports" {% if nav == 'reports' %}aria-current="page"{% endif %}>
+        {{ ui.icon('reports') }}<span>报告</span>
+      </a>
+      <a class="nav-item" href="/compare" {% if nav == 'compare' %}aria-current="page"{% endif %}>
+        {{ ui.icon('compare') }}<span>对比</span>
+      </a>
+      <a class="nav-item" href="/runs" {% if nav == 'runs' %}aria-current="page"{% endif %}>
+        {{ ui.icon('runs') }}<span>运行记录</span>
+      </a>
+    </nav>
+
+    <nav class="nav" aria-label="系统">
+      <a class="nav-item" href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}>
+        {{ ui.icon('settings') }}<span>设置</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-version">{{ app_name }}</div>
+      <div class="sidebar-version">v{{ app_version }} · 本地运行</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <main class="content {% block content_class %}{% endblock %}">
+      {% if flash %}
+        <div class="flash flash-{{ flash_level }}" role="status">
+          {{ ui.icon(
+               'check' if flash_level == 'ok'
+               else ('alert' if flash_level in ('warn', 'error') else 'info'),
+               'icon icon-sm') }}
+          <span>{{ flash }}</span>
+        </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+      所有数据保存在本机 · 情报判断不等同于事实，关键数字请回溯原始来源核验
+    </footer>
+  </div>
+</div>
+</body>
+</html>

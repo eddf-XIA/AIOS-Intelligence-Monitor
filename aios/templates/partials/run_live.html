@@ -1,0 +1,162 @@
+{% import "_icons.html" as ui with context %}
+{#- The live region of the Run Detail page: stage, module rows and source
+    health, all in one fragment.
+
+    While the run is active this element polls itself every two seconds and
+    replaces only itself - the page around it is never reloaded. When the run
+    reaches a terminal state the replacement carries no hx-trigger, so polling
+    stops on its own with no timer to clear.
+
+    Progress is only ever a real numerator over a real denominator. When the
+    true percentage is unknown, the stage list is shown instead. -#}
+{% set done_states = ['completed', 'completed_with_warnings', 'failed', 'skipped'] %}
+{% set total_modules = module_runs|length %}
+{% set done_modules = module_runs|selectattr('status', 'in', done_states)|list|length %}
+{% set stage_key = run.stage.split(':')[0] if run.stage else '' %}
+
+<div id="run-live"
+     {% if poll %}hx-get="/runs/{{ run.id }}/live" hx-trigger="every 2s" hx-swap="outerHTML"
+     {% else %}data-run-finished="{{ '1' if run.finished_at else '0' }}"{% endif %}>
+
+  {#- Authoritative clock state, refreshed by the same 2s poll as everything
+      else. The 用时 element lives in the page header, outside this region, so
+      without this marker it would have no way to learn that the run ended -
+      and would keep counting past the real finish. Polling once a second just
+      for a clock would be the wrong trade; this rides along for free. -#}
+  <span id="run-elapsed-sync" hidden aria-hidden="true"
+        data-elapsed-start="{{ run.started_at|isoutc }}"
+        data-elapsed-live="{{ '1' if run.is_active else '0' }}"
+        data-elapsed-final="{{ duration }}"></span>
+
+  {# --- 执行阶段 --- #}
+  <div class="surface">
+    <div class="surface-title">
+      执行阶段
+      {% if total_modules %}
+        <div class="spacer"></div>
+        <span class="small muted" style="font-variant-numeric:tabular-nums;font-weight:400">
+          模块 {{ done_modules }} / {{ total_modules }}
+        </span>
+      {% endif %}
+    </div>
+    <div class="surface-pad" style="padding-top:0">
+      {% set stages = [
+        ('checking_sources', '检测数据源'),
+        ('collecting', '采集来源'),
+        ('extracting', '抓取正文'),
+        ('analyzing', 'AI 分析'),
+        ('matching', '事件归并'),
+        ('synthesizing', '综合研判'),
+        ('generating_report', '生成报告')
+      ] %}
+      {% set order = ['planning', 'checking_sources', 'collecting', 'extracting', 'analyzing',
+                      'matching', 'synthesizing', 'generating_report'] %}
+      {% set current_index = order.index(stage_key) if stage_key in order else -1 %}
+      <div class="stage-list">
+        {% for key, label in stages %}
+          {% set idx = order.index(key) %}
+          {% set finished = (not run.is_active and run.status in ['completed', 'completed_with_errors'])
+                            or (current_index > idx) %}
+          {% set active = run.is_active and current_index == idx %}
+          <div class="stage {{ 'is-done' if finished else ('is-active' if active else '') }}">
+            <span class="stage-mark">
+              {% if finished %}{{ ui.icon('check', 'icon icon-sm') }}
+              {% elif active %}<span class="dot dot-running"></span>
+              {% else %}<span class="dot"></span>{% endif %}
+            </span>
+            {{ label }}
+            <span class="stage-note">
+              {% if finished %}完成{% elif active %}进行中{% else %}等待{% endif %}
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+      {% if total_modules %}
+        <div class="progress" style="margin-top:var(--space-4)">
+          <div class="progress-bar" style="width: {{ (done_modules / total_modules * 100)|round(1) }}%"></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# --- 模块执行情况 --- #}
+  <div class="surface" style="margin-top:var(--space-4)">
+    <div class="surface-title">模块执行情况</div>
+    {% if module_runs %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>模块</th><th>状态</th>
+              <th class="num">候选</th><th class="num">来源</th><th class="num">入报</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in module_runs %}
+              {% set ms = status_style(m.status) %}
+              <tr>
+                <td>
+                  {{ m.module_name }}
+                  {% if m.collection_status and m.collection_status != 'ok' %}
+                    <div class="small muted">{{ collection_status_label(m.collection_status) }}</div>
+                  {% endif %}
+                  {% if m.error_message %}
+                    <div class="small" style="color:var(--error-text)">{{ m.error_message|truncate_text(110) }}</div>
+                  {% endif %}
+                </td>
+                <td><span class="status-line"><span class="{{ ms[2] }}"></span>{{ ms[1] }}</span></td>
+                <td class="num">{{ m.candidate_count }}</td>
+                <td class="num">{{ m.article_count }}</td>
+                <td class="num">{{ m.selected_count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="surface-pad muted small">本次运行没有执行任何模块。</div>
+    {% endif %}
+  </div>
+
+  {# --- 数据源状态 --- #}
+  {% if source_stats %}
+    <div class="surface" style="margin-top:var(--space-4)">
+      <div class="surface-title">数据源状态</div>
+      {% for stat in source_stats %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title" style="font-size:13.5px">
+              {{ stat.display_name or stat.collector }}
+            </div>
+            <div class="settings-row-desc">
+              {%- if stat.requests_attempted -%}
+                {{ stat.requests_attempted }} 次请求 · {{ stat.requests_succeeded }} 成功
+                {%- if stat.zero_result_responses %} · {{ stat.zero_result_responses }} 次无结果{% endif -%}
+                {%- if stat.timeouts %} · {{ stat.timeouts }} 超时{% endif -%}
+                {%- if stat.rate_limited %} · {{ stat.rate_limited }} 次 429{% endif -%}
+                {%- if stat.network_errors %} · {{ stat.network_errors }} 连接失败{% endif -%}
+                {%- if stat.parse_errors %} · {{ stat.parse_errors }} 解析失败{% endif -%}
+                {%- if stat.avg_latency_ms %} · 平均 {{ stat.avg_latency_ms }} ms{% endif -%}
+              {%- elif stat.circuit_open_skips -%}
+                连续失败后已暂停，跳过 {{ stat.circuit_open_skips }} 次请求
+              {%- elif stat.state == 'disabled' -%}
+                已在设置中停用
+              {%- else -%}
+                本次未发起请求
+              {%- endif -%}
+              {%- if stat.cache_hits %} · {{ stat.cache_hits }} 次命中缓存{% endif -%}
+            </div>
+            {% if stat.last_error %}
+              <div class="settings-row-desc" style="color:var(--error-text)">
+                {{ stat.last_error|truncate_text(110) }}
+              </div>
+            {% endif %}
+          </div>
+          <div class="settings-row-action">
+            <span class="badge {{ health_badge(stat.state) }}">{{ health_label(stat.state) }}</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

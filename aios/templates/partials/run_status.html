@@ -1,0 +1,99 @@
+{% import "_icons.html" as ui with context %}
+{#- Live run status.
+
+    Progress is only ever drawn from a real numerator/denominator (modules
+    finished / modules planned). When only the current phase is known, a stage
+    list is shown instead of an invented percentage.
+
+    `compact` omits the per-module rows: the Overview shows module health in its
+    own panel, so repeating it here would say the same thing twice. -#}
+{% set done_states = ['completed', 'failed', 'skipped'] %}
+{% set total_modules = module_runs|length %}
+{% set done_modules = module_runs|selectattr('status', 'in', done_states)|list|length %}
+
+<div id="run-status"
+     {% if poll %}hx-get="{{ '/runs/' ~ run.id ~ '/status' if run else '/dashboard/status' }}"
+     hx-trigger="every 2s" hx-swap="outerHTML"{% else %}data-run-finished="{{ '1' if run and run.finished_at else '0' }}"{% endif %}>
+  {% if not run %}
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-desc">还没有执行过监测。</div>
+      </div>
+    </div>
+  {% else %}
+    {% set style = status_style(run.status) %}
+    {% set stage_key = run.stage.split(':')[0] if run.stage else '' %}
+    {% set stage_style = status_style(stage_key) %}
+
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title" style="font-size:13.5px">
+          <span class="{{ style[2] }}"></span>
+          {% if run.is_active %}{{ stage_style[1] }}{% else %}{{ style[1] }}{% endif %}
+          <span class="badge {{ style[0] }}">#{{ run.id }}</span>
+        </div>
+        <div class="settings-row-desc">
+          {{ run.report_date|cn_date }} ·
+          {{ '自动' if run.trigger_type == 'scheduled' else '手动' }}
+          {%- if run.started_at %} · {{ run.started_at|ago }}{% endif %}
+          {%- if duration %} · 用时 {{ duration }}{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if run.is_active and total_modules %}
+      <div class="settings-row settings-row-stack">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13px">
+            模块进度
+            <span class="spacer"></span>
+            <span class="muted small" style="font-variant-numeric:tabular-nums">{{ done_modules }} / {{ total_modules }}</span>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" style="width: {{ (done_modules / total_modules * 100)|round(1) }}%"></div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if run.error_message %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc" style="color:var(--error-text)">
+            {{ run.error_message|truncate_text(220) }}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if module_runs and not compact %}
+      {% for m in module_runs %}
+        {% set ms = status_style(m.status) %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title" style="font-size:13.5px">
+              <span class="{{ ms[2] }}"></span>{{ m.module_name }}
+            </div>
+            {% if m.error_message %}
+              <div class="settings-row-desc" style="color:var(--error-text)">{{ m.error_message|truncate_text(90) }}</div>
+            {% elif m.article_count or m.selected_count %}
+              <div class="settings-row-desc">{{ m.article_count }} 篇来源 · {{ m.selected_count }} 条入报</div>
+            {% endif %}
+          </div>
+          <div class="settings-row-value small">{{ ms[1] }}</div>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if not run.is_active and run.finished_at %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc">
+            共采集 {{ run.total_articles }} 篇 · 新增 {{ run.total_new_events }} 个事件 ·
+            更新 {{ run.total_updated_events }} 个 · 入报 {{ run.total_report_items }} 条
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

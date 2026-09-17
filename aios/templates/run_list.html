@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}运行记录 · {{ app_name }}{% endblock %}
+{% block content_class %}content-wide{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">运行记录</h1>
+    <p class="page-subtitle">每次监测的执行情况与产出。</p>
+  </div>
+  <div class="page-actions">
+    <form method="post" action="/run" class="inline">
+      <button type="submit" class="btn btn-primary">
+        {{ ui.icon('play', 'icon icon-sm') }} 立即监测
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if runs %}
+<div class="surface">
+  <div class="table-wrap">
+    <table class="table table-hover table-linked">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>状态</th>
+          <th>报告日期</th>
+          <th>触发</th>
+          <th>开始</th>
+          <th>用时</th>
+          <th class="num">来源</th>
+          <th class="num">事件</th>
+          <th class="num">入报</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+          {% set style = status_style(run.status) %}
+          <tr data-href="/runs/{{ run.id }}" style="cursor:pointer">
+            <td><a href="/runs/{{ run.id }}" style="color:var(--text)">#{{ run.id }}</a></td>
+            <td>
+              <span class="status-line"><span class="{{ style[2] }}"></span>{{ style[1] }}</span>
+            </td>
+            <td class="nowrap">{{ run.report_date|datetext }}</td>
+            <td class="small muted">{{ '自动' if run.trigger_type == 'scheduled' else '手动' }}</td>
+            <td class="small muted nowrap">{{ run.started_at|ago or '—' }}</td>
+            <td class="small muted nowrap">{{ durations.get(run.id) or '—' }}</td>
+            <td class="num">{{ run.total_articles }}</td>
+            <td class="num">{{ run.total_events }}</td>
+            <td class="num">{{ run.total_report_items }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-title">暂无运行记录</div>
+    <p class="empty-desc">执行一次监测后，这里会显示每次任务的完整执行情况。</p>
+    <form method="post" action="/run" class="inline">
+      <button type="submit" class="btn btn-primary">立即监测</button>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

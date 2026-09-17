@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}报告 · {{ app_name }}{% endblock %}
+{% block content_class %}content-wide{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title">报告</h1>
+    <p class="page-subtitle">{{ rows|length }} 份历史日报</p>
+  </div>
+  <div class="page-actions">
+    <form method="get" action="/reports" class="inline-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="搜索标题或情报内容"
+             aria-label="搜索报告" style="min-width:220px">
+      <button type="submit" class="btn">{{ ui.icon('search', 'icon icon-sm') }} 搜索</button>
+      {% if q %}<a class="btn btn-ghost" href="/reports">清除</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+{% if rows %}
+<div class="surface">
+  <div class="table-wrap">
+    <table class="table table-hover table-linked">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th class="num">条目</th>
+          <th class="num">新增</th>
+          <th class="num">更新</th>
+          <th class="num">来源</th>
+          <th>用时</th>
+          <th>模型</th>
+          <th class="shrink"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-href="/reports/{{ row.report.id }}" style="cursor:pointer">
+          <td>
+            <a href="/reports/{{ row.report.id }}" style="color:var(--text)">{{ row.report.report_date|datetext }}</a>
+            <div class="small muted">{{ row.report.report_date|weekday }}</div>
+          </td>
+          <td class="num">{{ row.item_count }}</td>
+          <td class="num">{{ row.new_events or '—' }}</td>
+          <td class="num">{{ row.updated_events or '—' }}</td>
+          <td class="num muted">{{ row.report.run.total_articles if row.report.run else '—' }}</td>
+          <td class="small muted nowrap">{{ row.duration or '—' }}</td>
+          <td>
+            {% if row.report.legacy_import %}
+              <span class="badge s-muted">历史导入</span>
+            {% else %}
+              <span class="small muted">{{ row.report.model|truncate_text(28) }}</span>
+            {% endif %}
+          </td>
+          <td class="shrink">
+            <a class="btn btn-ghost btn-sm"
+               href="/compare?date_b={{ row.report.report_date|datetext }}&date_a={{ row.report.report_date|datetext }}">对比</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-title">{% if q %}没有匹配的报告{% else %}暂无报告{% endif %}</div>
+    <p class="empty-desc">
+      {% if q %}换一个关键词试试。{% else %}完成第一次监测后，这里会显示生成的情报日报。{% endif %}
+    </p>
+    {% if q %}
+      <a class="btn" href="/reports">查看全部</a>
+    {% else %}
+      <form method="post" action="/run" class="inline">
+        <button type="submit" class="btn btn-primary">立即监测</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if matches %}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">情报条目</h2>
+    <span class="section-desc">{{ matches|length }} 条匹配</span>
+  </div>
+  <div class="surface">
+    {% for item in matches %}
+      <a class="row-link data-row" href="/reports/{{ item.section.report.id }}">
+        <span class="data-row-main">
+          <span class="data-row-title">{{ item.title|truncate_text(70) }}</span>
+          <span class="data-row-meta">
+            <span>{{ item.section.report.report_date|datetext }}</span>
+            <span class="dot-sep">·</span>
+            <span>{{ item.section.module_name }}</span>
+          </span>
+        </span>
+        {{ ui.icon('chevron-right', 'icon icon-sm muted') }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

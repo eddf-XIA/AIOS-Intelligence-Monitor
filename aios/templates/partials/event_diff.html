@@ -1,0 +1,91 @@
+{% import "_icons.html" as ui with context %}
+{#- One event's change between two reports.
+
+    State is always spelled out in text as well as colour. A percentage is only
+    rendered when the diff engine judged the two values genuinely comparable. -#}
+{% set labels = {
+  'NEW': '新增', 'UPDATED': '更新', 'DATA_CHANGE': '数据变化',
+  'CORRECTION': '数据修正', 'RESOLVED': '不再跟踪', 'UNCHANGED': '无变化'
+} %}
+<div class="diff-entry">
+  <div class="diff-head">
+    <span class="badge badge-lg {{ diff.badge_class }}">{{ labels.get(diff.change_type, diff.label) }}</span>
+    <h3 class="diff-title">{{ diff.title|truncate_text(76) }}</h3>
+    <span class="spacer"></span>
+    {% if diff.topic_name %}<span class="small muted">{{ diff.topic_name }}</span>{% endif %}
+    {% if diff.event_id %}
+      <a class="btn btn-ghost btn-sm" href="/events/{{ diff.event_id }}">时间线</a>
+    {% endif %}
+  </div>
+
+  {% if diff.metric_changes %}
+    {% for change in diff.metric_changes %}
+      <div class="diff-metric">
+        <span class="diff-metric-key">{{ change.key }}{{ ' · ' ~ change.unit if change.unit }}</span>
+        <span class="value-change">
+          <span class="value-old">{{ change.old_display or '—' }}</span>
+          <span class="value-arrow">→</span>
+          <span class="value-new">{{ change.new_display or '—' }}</span>
+        </span>
+        {% if change.comparable %}
+          <span class="delta delta-{{ change.direction }}">
+            {% if change.direction == 'up' %}↑{% elif change.direction == 'down' %}↓{% endif %}
+            {{ change.absolute_display }}
+          </span>
+          {% if change.percentage_display %}
+            <span class="delta delta-{{ change.direction }}">{{ change.percentage_display }}</span>
+          {% endif %}
+        {% else %}
+          <span class="small muted">非数值，不计算变化率</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if diff.change_type == 'NEW' %}
+    <p class="diff-facts">{{ diff.new_facts|truncate_text(240) }}</p>
+  {% elif diff.change_type == 'RESOLVED' %}
+    <p class="diff-facts muted">该事件在较新一期中不再出现，可能已结束或暂停跟踪。</p>
+    {% if diff.old_observation %}
+      <p class="diff-facts">{{ diff.old_observation.fact_summary|truncate_text(200) }}</p>
+    {% endif %}
+  {% elif diff.change_type == 'UNCHANGED' %}
+    <p class="diff-facts muted">本期没有实质性新增内容。</p>
+  {% else %}
+    {% if diff.new_observation %}
+      <div class="diff-facts diff-facts-new">
+        <span class="small muted">{{ diff.new_observation.observation_date|cn_date }} 新增</span><br>
+        {{ diff.new_observation.fact_summary|truncate_text(240) }}
+      </div>
+    {% endif %}
+    {% if diff.old_observation %}
+      <details style="margin-top:var(--space-2)">
+        <summary class="small muted" style="cursor:pointer">
+          查看 {{ diff.old_observation.observation_date|cn_date }} 的原始记录
+        </summary>
+        <p class="diff-facts">{{ diff.old_observation.fact_summary|truncate_text(240) }}</p>
+      </details>
+    {% endif %}
+  {% endif %}
+
+  {% if diff.new_observation and diff.new_observation.assessment and diff.change_type != 'UNCHANGED' %}
+    <div class="finding-assessment" style="margin-top:var(--space-3)">
+      <strong>情报判断</strong> · {{ diff.new_observation.assessment }}
+    </div>
+  {% endif %}
+
+  {% if diff.sources %}
+    <div class="sources">
+      <span class="sources-label">来源</span>
+      {% for article in diff.sources[:3] %}
+        <a class="source-chip" href="{{ article.url }}" target="_blank" rel="noopener">
+          {{ ui.icon('link', 'icon icon-sm') }}
+          {{ (article.source or article.domain or '来源')|truncate_text(24) }}
+        </a>
+      {% endfor %}
+      {% if diff.sources|length > 3 %}
+        <span class="source-chip">另 {{ diff.sources|length - 3 }} 个</span>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

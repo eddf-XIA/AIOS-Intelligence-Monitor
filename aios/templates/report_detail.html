@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}{{ report.report_date|datetext }} 日报 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/reports">报告</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>{{ report.report_date|datetext }}</span>
+    </div>
+    <h1 class="page-title">{{ report.report_date|cn_date }}情报日报</h1>
+    <p class="page-subtitle">
+      全球智能终端操作系统监测日报 · {{ report.item_count }} 条情报
+      {%- if report.run %} · 新增 {{ report.run.total_new_events }} · 更新 {{ report.run.total_updated_events }}{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if previous %}
+      <a class="btn" href="/compare?date_a={{ previous.report_date|datetext }}&date_b={{ report.report_date|datetext }}">
+        {{ ui.icon('compare', 'icon icon-sm') }} 与上期对比
+      </a>
+    {% endif %}
+    <a class="btn" href="/reports/{{ report.id }}/html" target="_blank" rel="noopener">
+      {{ ui.icon('external', 'icon icon-sm') }} HTML 版
+    </a>
+    <div class="menu" data-open="false">
+      <button type="button" class="btn btn-icon" data-menu-trigger
+              aria-haspopup="true" aria-expanded="false" aria-label="更多操作">
+        {{ ui.icon('dots', 'icon icon-sm') }}
+      </button>
+      <div class="menu-panel" role="menu">
+        <a class="menu-item" role="menuitem" href="/reports/{{ report.id }}/audit" target="_blank" rel="noopener">
+          {{ ui.icon('database', 'icon icon-sm') }} JSON 审计
+        </a>
+        <form method="post" action="/reports/{{ report.id }}/export">
+          <button type="submit" class="menu-item" role="menuitem">
+            {{ ui.icon('download', 'icon icon-sm') }} 重新导出
+          </button>
+        </form>
+        <div class="menu-sep"></div>
+        <form method="post" action="/reports/{{ report.id }}/delete"
+              data-confirm="删除 {{ report.report_date|datetext }} 的报告？情报事件与来源证据会保留。">
+          <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+            {{ ui.icon('trash', 'icon icon-sm') }} 删除报告
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="segmented" style="margin-bottom:var(--space-6)" role="tablist">
+  <a href="/reports/{{ report.id }}?view=report" {% if view == 'report' %}aria-current="true"{% endif %}>日报</a>
+  <a href="/reports/{{ report.id }}?view=evidence" {% if view == 'evidence' %}aria-current="true"{% endif %}>证据</a>
+  <a href="/reports/{{ report.id }}?view=events" {% if view == 'events' %}aria-current="true"{% endif %}>事件</a>
+</div>
+
+{% if coverage_notice %}
+  {#- Calm, factual, and never a stack trace: the reader needs to know the
+      report may be incomplete, not how requests library reports a timeout. -#}
+  <div class="flash flash-warn" role="status" style="margin-bottom:var(--space-5)">
+    {{ ui.icon('alert', 'icon icon-sm') }}
+    <span>
+      {{ coverage_notice.headline }}
+      {% if coverage_notice.notes %}
+        <span class="muted"> · {{ coverage_notice.notes|join(' · ') }}</span>
+      {% endif %}
+    </span>
+  </div>
+{% endif %}
+
+{% if view == 'report' %}
+  <div class="editorial">
+    {% if report.headline_json and report.headline_json.title %}
+      <div class="editorial-lede">
+        <strong>今日头条 · {{ report.headline_json.title }}</strong>
+        <div style="margin-top:6px">{{ report.headline_json.body }}</div>
+      </div>
+    {% endif %}
+
+    {% for section in report.sections %}
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">{{ section.module_name }}</h2>
+          {% if section.items %}
+            <span class="section-desc">{{ section.items|length }} 条</span>
+          {% endif %}
+        </div>
+        {% if section.summary %}
+          <p class="secondary" style="margin-bottom:var(--space-3)">{{ section.summary }}</p>
+        {% endif %}
+
+        {% if section.items %}
+          {% for item in section.items %}
+            {% include "partials/report_item.html" %}
+          {% endfor %}
+        {% else %}
+          <p class="muted small">{{ empty_section_text(section.coverage_state) }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if report.trends_json %}
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">趋势研判</h2>
+          <span class="section-desc">基于本期事实的推断，不等同于事实</span>
+        </div>
+        <div class="surface surface-divide">
+          {% for trend in report.trends_json %}
+            <div class="surface-pad">
+              <div class="row" style="gap:var(--space-2);margin-bottom:6px">
+                <strong style="font-size:14.5px">{{ trend.title }}</strong>
+                {% if trend.confidence %}
+                  <span class="badge {{ 's-ok' if trend.confidence == 'high' else 's-muted' }}">
+                    {{ '高置信' if trend.confidence == 'high' else '中等置信' }}
+                  </span>
+                {% endif %}
+              </div>
+              <p class="secondary" style="font-size:13.5px;line-height:1.75">{{ trend.body }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if report.metrics_json %}
+      <div class="section">
+        <div class="section-header"><h2 class="section-title">数据速览</h2></div>
+        <div class="metric-group">
+          {% for metric in report.metrics_json[:6] %}
+            <div class="metric">
+              <div class="metric-value" style="font-size:22px">{{ metric.value }}</div>
+              <div class="metric-note">{{ metric.label }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="section">
+      <p class="small muted">
+        模型：{{ report.model or '—' }} · 生成于 {{ report.created_at|localtime }}
+        {%- if report.html_path %} · 已导出到本机{% endif %}
+      </p>
+    </div>
+  </div>
+
+{% elif view == 'evidence' %}
+  <p class="secondary" style="margin-bottom:var(--space-4)">
+    每条情报都可以追溯到具体文章：报告条目 → 事件观测 → 原始来源 → URL。
+  </p>
+  {% for section in report.sections %}
+    {% if section.items %}
+      <div class="section">
+        <div class="section-header"><h2 class="section-title">{{ section.module_name }}</h2></div>
+        {% for item in section.items %}
+          <div class="surface" style="margin-bottom:var(--space-3)">
+            <div class="surface-title">{{ item.title|truncate_text(72) }}</div>
+            {% if item.observation and item.observation.sources %}
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr><th>来源</th><th>标题</th><th>发布</th><th class="num">可信度</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for link in item.observation.sources %}
+                      {% set article = link.article %}
+                      {% if article %}
+                      <tr>
+                        <td class="nowrap">{{ article.source or article.domain }}</td>
+                        <td>
+                          <a href="{{ article.url }}" target="_blank" rel="noopener">
+                            {{ article.title|truncate_text(80) }}
+                          </a>
+                        </td>
+                        <td class="small muted nowrap">
+                          {{ article.published_raw|truncate_text(20) or (article.published_at|ago) or '—' }}
+                        </td>
+                        <td class="num small">{{ '%.1f'|format(article.trust_score or 0) }}</td>
+                      </tr>
+                      {% endif %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="surface-pad small muted">该条目没有关联来源记录。</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+{% else %}
+  <p class="secondary" style="margin-bottom:var(--space-4)">
+    本期涉及的情报事件。新增表示首次出现，更新表示既有事件的新观测。
+  </p>
+  <div class="surface">
+    <div class="table-wrap">
+      <table class="table table-hover">
+        <thead>
+          <tr><th>事件</th><th>领域</th><th>状态</th><th class="num">累计观测</th><th>首次出现</th></tr>
+        </thead>
+        <tbody>
+          {% for section in report.sections %}
+            {% for item in section.items %}
+              {% if item.event %}
+              <tr data-href="/events/{{ item.event.id }}" style="cursor:pointer">
+                <td><a href="/events/{{ item.event.id }}" style="color:var(--text)">{{ item.event.title|truncate_text(64) }}</a></td>
+                <td class="small muted">{{ section.module_name }}</td>
+                <td>
+                  <span class="badge badge-{{ item.event_state or 'updated' }}">
+                    {{ '新增' if item.event_state == 'new' else '更新' }}
+                  </span>
+                </td>
+                <td class="num">{{ item.event.observation_count }}</td>
+                <td class="small muted nowrap">{{ item.event.first_seen_date|datetext }}</td>
+              </tr>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

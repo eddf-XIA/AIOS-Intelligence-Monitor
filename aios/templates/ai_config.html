@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/monitoring">监测配置</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      {% if module %}
+        <a href="/monitoring/modules/{{ module.id }}">{{ module.name }}</a>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      {% endif %}
+      <span>AI 生成</span>
+    </div>
+    <h1 class="page-title">{{ title }}</h1>
+    <p class="page-subtitle">{{ subtitle }}</p>
+  </div>
+  <div class="page-actions">
+    {% if module %}
+      <a class="btn btn-ghost" href="/monitoring/modules/{{ module.id }}">
+        {{ ui.icon('arrow-left', 'icon icon-sm') }} 返回模块
+      </a>
+    {% else %}
+      <a class="btn btn-ghost" href="/monitoring">
+        {{ ui.icon('arrow-left', 'icon icon-sm') }} 返回
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if readiness_error %}
+  <div class="flash flash-warn" role="status">
+    {{ ui.icon('alert', 'icon icon-sm') }}
+    <span>
+      {{ readiness_error }} ——
+      <a href="{{ settings_link }}">前往「设置 → AI 模型」配置</a>
+    </span>
+  </div>
+{% endif %}
+
+<div class="surface surface-pad">
+  <form hx-post="{{ action }}" hx-target="#ai-draft" hx-swap="innerHTML"
+        hx-indicator="#ai-busy">
+    <div class="field">
+      <label for="ai-description">一句话描述</label>
+      <textarea id="ai-description" name="description" rows="3"
+                placeholder="{{ examples[0] }}"
+                {% if readiness_error %}disabled{% endif %} required></textarea>
+      <div class="field-hint">
+        描述监测范围即可，不需要懂检索式、数据源或提示词。
+        生成后可以逐条修改，确认无误再应用。
+      </div>
+    </div>
+
+    <div class="row" style="gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-4)">
+      {% for example in examples %}
+        <button type="button" class="btn btn-sm btn-ghost" data-fill="#ai-description"
+                data-fill-value="{{ example }}">{{ example|truncate_text(34) }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="row" style="gap:var(--space-3);align-items:center">
+      <button type="submit" class="btn btn-primary" {% if readiness_error %}disabled{% endif %}>
+        {{ ui.icon('play', 'icon icon-sm') }} AI 生成配置
+      </button>
+      <span id="ai-busy" class="htmx-indicator muted small">正在生成，请稍候…</span>
+    </div>
+  </form>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">生成约束</h2>
+    <span class="section-desc">每条检索式都会产生真实网络请求，因此生成结果保持克制。</span>
+  </div>
+  <div class="settings-group">
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title" style="font-size:13.5px">单个模块主题上限</div>
+        <div class="settings-row-desc">建议 3-4 个主题</div>
+      </div>
+      <div class="settings-row-value">{{ limits.max_topics }}</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title" style="font-size:13.5px">单个主题检索式上限</div>
+        <div class="settings-row-desc">建议 2-3 条，覆盖不同角度</div>
+      </div>
+      <div class="settings-row-value">{{ limits.max_queries_per_topic }}</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title" style="font-size:13.5px">单次生成检索式总量上限</div>
+        <div class="settings-row-desc">超出部分会被裁剪并提示</div>
+      </div>
+      <div class="settings-row-value">{{ limits.max_total_queries }}</div>
+    </div>
+  </div>
+</div>
+
+<div id="ai-draft"></div>
+{% endblock %}

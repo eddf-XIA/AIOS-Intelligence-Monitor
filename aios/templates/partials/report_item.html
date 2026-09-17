@@ -1,0 +1,68 @@
+{% import "_icons.html" as ui with context %}
+{#- One finding in the editorial report view. Fact and assessment stay visually
+    separated; sources are chips, collapsed to a count when numerous. -#}
+<article class="finding">
+  <div class="finding-head">
+    <span class="pill">{{ item.tag or '情报' }}</span>
+    {% if item.event_state %}
+      <span class="badge badge-{{ item.event_state }}">
+        {{ '新增' if item.event_state == 'new' else '持续追踪' }}
+      </span>
+    {% endif %}
+    <span class="spacer"></span>
+    <span class="small muted">
+      置信度 {{ {'high': '高', 'medium': '中', 'low': '低'}.get(item.confidence, item.confidence) }}
+    </span>
+  </div>
+
+  <h3 class="finding-title">
+    {% if item.event_id %}
+      <a href="/events/{{ item.event_id }}">{{ item.title }}</a>
+    {% else %}
+      {{ item.title }}
+    {% endif %}
+  </h3>
+
+  <p class="finding-fact">{{ item.fact_summary }}</p>
+
+  {% if item.assessment %}
+    <div class="finding-assessment">
+      <strong>情报判断</strong> · {{ item.assessment }}
+    </div>
+  {% endif %}
+
+  {% if item.observation and item.observation.metrics %}
+    <div class="finding-metrics">
+      {% for key, entry in item.observation.metrics.items() %}
+        {% if entry is mapping and (entry.display or entry.value) %}
+          <div class="finding-metric">
+            <div class="finding-metric-label">{{ key }}</div>
+            <div class="finding-metric-value">
+              {{ entry.display or entry.value }}{{ ' ' ~ entry.unit if entry.unit }}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if item.observation and item.observation.sources %}
+    {% set articles = item.observation.sources | map(attribute='article') | select | list %}
+    {% if articles %}
+      <div class="sources">
+        <span class="sources-label">来源</span>
+        {% for article in articles[:3] %}
+          <a class="source-chip" href="{{ article.url }}" target="_blank" rel="noopener">
+            {{ ui.icon('link', 'icon icon-sm') }}
+            {{ (article.source or article.domain or '来源')|truncate_text(26) }}
+          </a>
+        {% endfor %}
+        {% if articles|length > 3 %}
+          <a class="source-chip" href="/reports/{{ item.section.report_id }}?view=evidence">
+            另 {{ articles|length - 3 }} 个来源
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endif %}
+</article>

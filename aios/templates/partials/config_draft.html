@@ -1,0 +1,196 @@
+{% import "_icons.html" as ui with context %}
+{#- Preview of an AI-generated configuration draft.
+
+    Nothing here has been written to the database. Every field is editable, and
+    the apply form posts the *edited* values back through the same validation
+    the generated ones went through. -#}
+
+{% if error %}
+  <div class="section">
+    <div class="flash flash-error" role="status">
+      {{ ui.icon('alert', 'icon icon-sm') }}
+      <span>
+        {{ error }}
+        {% if settings_link %} —— <a href="{{ settings_link }}">前往设置</a>{% endif %}
+      </span>
+    </div>
+  </div>
+{% elif draft or topic %}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">配置预览</h2>
+    <span class="section-desc">尚未保存 · 可直接修改后再应用</span>
+    {% if provider_label %}
+      <div class="spacer"></div>
+      <span class="badge s-muted mono">{{ provider_label }}</span>
+    {% endif %}
+  </div>
+
+  {% if notes %}
+    <div class="flash flash-ok" role="status" style="margin-bottom:var(--space-4)">
+      {{ ui.icon('info', 'icon icon-sm') }}<span>{{ notes }}</span>
+    </div>
+  {% endif %}
+
+  {% for warning in warnings %}
+    <div class="flash flash-warn" role="status" style="margin-bottom:var(--space-3)">
+      {{ ui.icon('alert', 'icon icon-sm') }}<span>{{ warning }}</span>
+    </div>
+  {% endfor %}
+
+  {% for finding in diagnostics %}
+    <div class="flash flash-{{ 'warn' if finding.level == 'warn' else 'ok' }}"
+         role="status" style="margin-bottom:var(--space-3)">
+      {{ ui.icon('alert' if finding.level == 'warn' else 'info', 'icon icon-sm') }}
+      <span>{{ finding.message }}</span>
+    </div>
+  {% endfor %}
+
+  <form method="post" action="{{ apply_action }}">
+    {% set topics = draft.topics if draft else [topic] %}
+    <input type="hidden" name="topic_count" value="{{ topics|length }}">
+
+    {% if draft %}
+      <div class="surface surface-pad" style="margin-bottom:var(--space-4)">
+        <div class="field-row">
+          <div class="field">
+            <label for="draft-name">模块名称</label>
+            <input type="text" id="draft-name" name="module_name" value="{{ draft.name }}" required>
+          </div>
+          <div class="field">
+            <label for="draft-key">标识</label>
+            <input type="text" id="draft-key" name="module_key" value="{{ draft.key }}" required>
+            <div class="field-hint">小写字母、数字、- 或 _</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="draft-desc">描述</label>
+          <input type="text" id="draft-desc" name="module_description" value="{{ draft.description }}">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="draft-lookback">监测窗口（天）</label>
+            <input type="number" id="draft-lookback" name="lookback_days"
+                   value="{{ draft.recommended_lookback_days }}" min="1" max="60">
+          </div>
+          <div class="field">
+            <label for="draft-items">入报上限</label>
+            <input type="number" id="draft-items" name="max_report_items"
+                   value="{{ draft.recommended_report_limit }}" min="1" max="10">
+          </div>
+          <div class="field">
+            <label>预计外部请求</label>
+            <div class="settings-row-value" style="padding-top:8px">
+              约 {{ estimated_requests }} 次 / 次监测
+            </div>
+            <div class="field-hint">采用分级采集，实际通常更少</div>
+          </div>
+        </div>
+        <details class="disclosure">
+          <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 高级配置：模块级分析说明</summary>
+          <div class="disclosure-body">
+            <div class="field">
+              <label for="draft-instructions">分析说明</label>
+              <textarea id="draft-instructions" name="module_instructions"
+                        rows="3">{{ draft.analysis_instructions }}</textarea>
+            </div>
+          </div>
+        </details>
+      </div>
+    {% elif module %}
+      <div class="flash flash-ok" role="status" style="margin-bottom:var(--space-4)">
+        {{ ui.icon('info', 'icon icon-sm') }}
+        <span>将向「{{ module.name }}」新增 1 个主题，现有主题不会被修改。</span>
+      </div>
+    {% endif %}
+
+    {% for t in topics %}
+      <div class="surface surface-pad" style="margin-bottom:var(--space-4)">
+        <div class="row" style="gap:var(--space-3);align-items:center;margin-bottom:var(--space-3)">
+          <label class="toggle">
+            <input type="checkbox" name="topic_enabled_{{ loop.index0 }}" value="1" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>包含该主题</span>
+          </label>
+          <div class="spacer"></div>
+          <span class="badge s-muted">{{ t.queries|length }} 条检索式</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="t-name-{{ loop.index0 }}">主题名称</label>
+            <input type="text" id="t-name-{{ loop.index0 }}"
+                   name="topic_name_{{ loop.index0 }}" value="{{ t.name }}" required>
+          </div>
+          <div class="field">
+            <label for="t-desc-{{ loop.index0 }}">描述</label>
+            <input type="text" id="t-desc-{{ loop.index0 }}"
+                   name="topic_description_{{ loop.index0 }}" value="{{ t.description }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="t-q-{{ loop.index0 }}">检索式（每行一条）</label>
+          <textarea id="t-q-{{ loop.index0 }}" name="topic_queries_{{ loop.index0 }}"
+                    rows="{{ [t.queries|length + 1, 3]|max }}">
+{%- for q in t.queries %}{{ q.query }}
+{% endfor -%}
+</textarea>
+        </div>
+
+        <details class="disclosure">
+          <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 高级配置：优先来源 / 排除词 / 分析说明</summary>
+          <div class="disclosure-body">
+            <div class="field">
+              <label for="t-src-{{ loop.index0 }}">优先来源域名（每行一个）</label>
+              <textarea id="t-src-{{ loop.index0 }}" name="topic_sources_{{ loop.index0 }}"
+                        rows="3">
+{%- for s in t.preferred_sources %}{{ s.domain }}
+{% endfor -%}
+</textarea>
+              <div class="field-hint">
+                仅作为排序与可信度参考，AIOS 不会声称这些域名已验证可用，也不会据此调用任何私有接口。
+              </div>
+            </div>
+            <div class="field">
+              <label for="t-ex-{{ loop.index0 }}">排除关键词（每行一个）</label>
+              <textarea id="t-ex-{{ loop.index0 }}" name="topic_excluded_{{ loop.index0 }}"
+                        rows="2">
+{%- for k in t.excluded_keywords %}{{ k }}
+{% endfor -%}
+</textarea>
+            </div>
+            <div class="field">
+              <label for="t-ins-{{ loop.index0 }}">分析说明</label>
+              <textarea id="t-ins-{{ loop.index0 }}" name="topic_instructions_{{ loop.index0 }}"
+                        rows="3">{{ t.analysis_instructions }}</textarea>
+            </div>
+            {% if t.preferred_sources and t.preferred_sources[0].reason %}
+              <div class="field-hint">
+                AI 的来源理由：
+                {% for s in t.preferred_sources if s.reason %}
+                  <span class="mono">{{ s.domain }}</span> — {{ s.reason }}{% if not loop.last %} · {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+    {% endfor %}
+
+    <div class="row" style="gap:var(--space-3);flex-wrap:wrap">
+      <button type="submit" class="btn btn-primary">
+        {{ ui.icon('check', 'icon icon-sm') }} 应用配置
+      </button>
+      <button type="button" class="btn" data-fill="#ai-description"
+              data-fill-value="{{ description }}"
+              onclick="document.querySelector('#ai-description').form.requestSubmit()">
+        {{ ui.icon('refresh', 'icon icon-sm') }} 重新生成
+      </button>
+      <a class="btn btn-ghost" href="{{ '/monitoring/modules/' ~ module.id if module else '/monitoring' }}">
+        取消
+      </a>
+    </div>
+  </form>
+</div>
+{% endif %}

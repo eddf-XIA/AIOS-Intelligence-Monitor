@@ -1,0 +1,44 @@
+{% import "_icons.html" as ui with context %}
+{#- Connectivity diagnostics result. Shows what each source answered, never
+    how it was reached: no headers, no keys, no proxy credentials. -#}
+<div id="network-diagnostics">
+  {% if error %}
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-desc" style="color:var(--error-text)">{{ error }}</div>
+      </div>
+    </div>
+  {% elif probes %}
+    {% for probe in probes %}
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13.5px">{{ probe.display_name }}</div>
+          {% if probe.detail %}
+            <div class="settings-row-desc">{{ probe.detail|truncate_text(120) }}</div>
+          {% endif %}
+        </div>
+        <div class="settings-row-action">
+          {% if probe.latency_ms and probe.state == 'healthy' %}
+            <span class="muted small" style="font-variant-numeric:tabular-nums">
+              {{ probe.latency_ms }} ms
+            </span>
+          {% endif %}
+          <span class="badge {{ health_badge(probe.state) }}">{{ probe.status_label }}</span>
+        </div>
+      </div>
+    {% endfor %}
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-desc">
+          诊断只做轻量连通性检查，不会执行完整检索。
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-desc">点击「测试连接」检查各数据源当前是否可用。</div>
+      </div>
+    </div>
+  {% endif %}
+</div>

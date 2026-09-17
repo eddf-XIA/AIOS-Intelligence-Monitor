@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}AI 模型 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/settings">设置</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>AI 模型</span>
+    </div>
+    <h1 class="page-title">AI 模型</h1>
+    <p class="page-subtitle">AIOS 负责情报流程，模型只是可替换的推理引擎。可同时配置多家服务商。</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="#add-provider">{{ ui.icon('plus', 'icon icon-sm') }} 添加服务商</a>
+  </div>
+</div>
+
+{# ---------------- 已配置 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">已配置</h2>
+    <span class="section-desc">{{ providers|length }} 家服务商</span>
+  </div>
+
+  {% if providers %}
+    <div class="settings-group">
+      {% for p in providers %}
+        {% set preset = presets.get(p.provider_id) %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-title">
+              {{ p.display_name }}
+              {% if p.is_default %}<span class="badge badge-accent">默认</span>{% endif %}
+              {% if not p.enabled %}<span class="badge s-muted">已停用</span>{% endif %}
+            </div>
+            <div class="settings-row-desc">
+              <span class="mono">{{ p.default_model or '未设置模型' }}</span>
+              {% if p.has_api_key %}
+                <span class="dot-sep">·</span><span class="mono">{{ p.masked_key }}</span>
+              {% elif preset and not preset.requires_api_key %}
+                <span class="dot-sep">·</span>无需 API Key
+              {% endif %}
+            </div>
+          </div>
+          <div class="settings-row-action">
+            {% if p.is_configured %}
+              <span class="badge s-ok">已连接</span>
+            {% else %}
+              <span class="badge s-warn">未完成配置</span>
+            {% endif %}
+            <form method="post" action="/settings/ai/providers/{{ p.id }}/test" class="inline">
+              <button type="submit" class="btn btn-sm">测试连接</button>
+            </form>
+            <div class="menu" data-open="false">
+              <button type="button" class="btn btn-ghost btn-icon" data-menu-trigger
+                      aria-haspopup="true" aria-expanded="false" aria-label="{{ p.display_name }} 更多操作">
+                {{ ui.icon('dots', 'icon icon-sm') }}
+              </button>
+              <div class="menu-panel" role="menu">
+                <a class="menu-item" role="menuitem" href="#edit-{{ p.id }}">
+                  {{ ui.icon('edit', 'icon icon-sm') }} 编辑配置
+                </a>
+                {% if not p.is_default %}
+                  <form method="post" action="/settings/ai/providers/{{ p.id }}/default">
+                    <button type="submit" class="menu-item" role="menuitem">
+                      {{ ui.icon('check', 'icon icon-sm') }} 设为默认
+                    </button>
+                  </form>
+                {% endif %}
+                <form method="post" action="/settings/ai/providers/{{ p.id }}/toggle">
+                  <button type="submit" class="menu-item" role="menuitem">
+                    {{ ui.icon('pause' if p.enabled else 'play', 'icon icon-sm') }}
+                    {{ '停用' if p.enabled else '启用' }}
+                  </button>
+                </form>
+                {% if p.has_api_key %}
+                  <div class="menu-sep"></div>
+                  <form method="post" action="/settings/ai/providers/{{ p.id }}/key/delete"
+                        data-confirm="删除 {{ p.display_name }} 的 API Key？">
+                    <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                      {{ ui.icon('key', 'icon icon-sm') }} 删除 Key
+                    </button>
+                  </form>
+                {% endif %}
+                <form method="post" action="/settings/ai/providers/{{ p.id }}/delete"
+                      data-confirm="删除 {{ p.display_name }} 的全部配置与凭据？">
+                  <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                    {{ ui.icon('trash', 'icon icon-sm') }} 删除服务商
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# --- 编辑面板：默认折叠，避免一屏全是输入框 --- #}
+        <details class="disclosure" id="edit-{{ p.id }}">
+          <summary>
+            {{ ui.icon('chevron-right', 'icon icon-sm') }} {{ p.display_name }} · 配置
+            <span class="spacer"></span>
+            <span class="small muted">{{ p.base_url|truncate_text(38) }}</span>
+          </summary>
+          <div class="disclosure-body">
+            <form method="post" action="/settings/ai/providers">
+              <input type="hidden" name="provider_id" value="{{ p.provider_id }}">
+              <div class="field-row">
+                <div class="field">
+                  <label for="name-{{ p.id }}">显示名称</label>
+                  <input type="text" id="name-{{ p.id }}" name="display_name" value="{{ p.display_name }}">
+                </div>
+                <div class="field">
+                  <label for="model-{{ p.id }}">默认模型</label>
+                  <input type="text" id="model-{{ p.id }}" name="default_model"
+                         value="{{ p.default_model }}"
+                         placeholder="{{ preset.example_model if preset else '' }}">
+                  <div class="field-hint">
+                    自由填写{% if preset and preset.example_models %}，示例：{{ preset.example_models|join('、') }}{% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="url-{{ p.id }}">Base URL</label>
+                <input type="text" id="url-{{ p.id }}" name="base_url" value="{{ p.base_url }}">
+                <div class="field-hint">可改为企业版端点、代理网关或自建兼容服务</div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="temp-{{ p.id }}">Temperature</label>
+                  <input type="number" id="temp-{{ p.id }}" name="temperature"
+                         value="{{ p.temperature }}" step="0.1" min="0" max="2">
+                </div>
+                <div class="field">
+                  <label for="tok-{{ p.id }}">Max tokens</label>
+                  <input type="number" id="tok-{{ p.id }}" name="max_tokens"
+                         value="{{ p.max_tokens }}" min="256" max="200000">
+                </div>
+                <div class="field">
+                  <label for="to-{{ p.id }}">超时（秒）</label>
+                  <input type="number" id="to-{{ p.id }}" name="timeout_seconds"
+                         value="{{ p.timeout_seconds }}" min="10" max="900">
+                </div>
+                <div class="field">
+                  <label for="re-{{ p.id }}">重试次数</label>
+                  <input type="number" id="re-{{ p.id }}" name="retries"
+                         value="{{ p.retries }}" min="1" max="6">
+                </div>
+              </div>
+              <div class="field">
+                <label class="toggle">
+                  <input type="checkbox" name="enabled" {{ 'checked' if p.enabled }}>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  <span>启用该服务商</span>
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary">保存配置</button>
+            </form>
+
+            {% if not preset or preset.requires_api_key %}
+              <div class="divider"></div>
+              <form method="post" action="/settings/ai/providers/{{ p.id }}/key">
+                <label for="key-{{ p.id }}">{{ '更换 API Key' if p.has_api_key else '输入 API Key' }}</label>
+                <div class="inline-form">
+                  <input type="password" id="key-{{ p.id }}" name="api_key" required autocomplete="off"
+                         placeholder="sk-...">
+                  <button type="button" class="btn" data-toggle-visibility="key-{{ p.id }}">显示</button>
+                  <button type="submit" class="btn btn-primary">保存 Key</button>
+                </div>
+                <div class="field-hint">
+                  保存到系统凭据管理器（{{ keyring_backend }}），不会写入数据库。
+                </div>
+              </form>
+            {% endif %}
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-title">尚未配置服务商</div>
+      <p class="empty-desc">在下方选择一家服务商，填入模型名与 API Key 即可开始使用。</p>
+      <a class="btn btn-primary" href="#add-provider">添加服务商</a>
+    </div>
+  {% endif %}
+</div>
+
+{# ---------------- 任务模型分配 ---------------- #}
+<div class="section">
+  <div class="section-header">
+    <h2 class="section-title">任务模型分配</h2>
+    <span class="section-desc">筛选与归并可用便宜模型，综合研判可用更强的模型。</span>
+  </div>
+
+  {% if providers %}
+    <form method="post" action="/settings/ai/routes">
+      <div class="settings-group">
+        {% for task in overridable_tasks %}
+          {% set route = routing.routes.get(task) %}
+          {% set resolved = routing.resolved.get(task) %}
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <div class="settings-row-title">{{ tasks[task] }}</div>
+              <div class="settings-row-desc">
+                当前生效：
+                {% if resolved %}{{ resolved.display_name }} · <span class="mono">{{ resolved.model }}</span>
+                {% else %}—{% endif %}
+              </div>
+            </div>
+            <div class="settings-row-action">
+              <select name="route_{{ task }}" aria-label="{{ tasks[task] }} 服务商" style="width:auto;min-width:150px">
+                <option value="">使用默认</option>
+                {% for p in providers %}
+                  <option value="{{ p.id }}" {{ 'selected' if route and route.provider_config_id == p.id }}>
+                    {{ p.display_name }}
+                  </option>
+                {% endfor %}
+              </select>
+              <input type="text" name="model_{{ task }}" value="{{ route.model if route else '' }}"
+                     placeholder="默认模型" aria-label="{{ tasks[task] }} 模型" style="width:170px">
+            </div>
+          </div>
+        {% endfor %}
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-row-desc">留空表示使用默认服务商与其默认模型。</div>
+          </div>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </div>
+    </form>
+  {% else %}
+    <div class="settings-group">
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-desc">先添加至少一个服务商，才能配置任务分配。</div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{# ---------------- 添加服务商 ---------------- #}
+<div class="section" id="add-provider">
+  <div class="section-header">
+    <h2 class="section-title">添加服务商</h2>
+    <span class="section-desc">选择后自动填入官方 Base URL 与示例模型，两者都可修改。</span>
+  </div>
+
+  <div class="surface surface-pad">
+    <form method="post" action="/settings/ai/providers">
+      <div class="field">
+        <label for="new-provider">服务商</label>
+        <select id="new-provider" name="provider_id" required onchange="aiosFillPreset(this)">
+          <option value="">请选择</option>
+          <optgroup label="国内服务商">
+            {% for preset in all_chinese %}
+              <option value="{{ preset.provider_id }}"
+                      data-base-url="{{ preset.default_base_url }}"
+                      data-model="{{ preset.example_model }}"
+                      data-hint="{{ preset.documentation_hint }}"
+                      data-needs-key="{{ '1' if preset.requires_api_key else '0' }}">
+                {{ preset.display_name }}
+              </option>
+            {% endfor %}
+          </optgroup>
+          <optgroup label="国际 / 本地模型">
+            {% for preset in all_international %}
+              <option value="{{ preset.provider_id }}"
+                      data-base-url="{{ preset.default_base_url }}"
+                      data-model="{{ preset.example_model }}"
+                      data-hint="{{ preset.documentation_hint }}"
+                      data-needs-key="{{ '1' if preset.requires_api_key else '0' }}">
+                {{ preset.display_name }}
+              </option>
+            {% endfor %}
+          </optgroup>
+        </select>
+        <div class="field-hint" id="preset-hint"></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="new-base-url">Base URL</label>
+          <input type="text" id="new-base-url" name="base_url" placeholder="选择服务商后自动填入">
+        </div>
+        <div class="field">
+          <label for="new-model">默认模型</label>
+          <input type="text" id="new-model" name="default_model" placeholder="选择服务商后自动填入">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="new-key">API Key<span id="key-optional" class="muted"></span></label>
+        <div class="inline-form">
+          <input type="password" id="new-key" name="api_key" autocomplete="off"
+                 placeholder="粘贴 API Key，本地模型可留空">
+          <button type="button" class="btn" data-toggle-visibility="new-key">显示</button>
+        </div>
+        <div class="field-hint">
+          保存到系统凭据管理器（{{ keyring_backend }}），不会写入数据库。
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">添加服务商</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function aiosFillPreset(select) {
+  var option = select.options[select.selectedIndex];
+  if (!option) return;
+  document.getElementById("new-base-url").value = option.getAttribute("data-base-url") || "";
+  document.getElementById("new-model").value = option.getAttribute("data-model") || "";
+  document.getElementById("preset-hint").textContent = option.getAttribute("data-hint") || "";
+  document.getElementById("key-optional").textContent =
+    option.getAttribute("data-needs-key") === "1" ? "" : "（该服务无需 Key）";
+}
+</script>
+{% endblock %}

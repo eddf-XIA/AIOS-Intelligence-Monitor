@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}运行 #{{ run.id }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+{% set style = status_style(run.status) %}
+{% set stage_key = run.stage.split(':')[0] if run.stage else '' %}
+{% set done_states = ['completed', 'failed', 'skipped'] %}
+{% set done_modules = module_runs|selectattr('status', 'in', done_states)|list|length %}
+
+<div class="page-header">
+  <div class="page-header-text">
+    <div class="breadcrumb">
+      <a href="/runs">运行记录</a>
+      {{ ui.icon('chevron-right', 'icon icon-sm') }}
+      <span>#{{ run.id }}</span>
+    </div>
+    <h1 class="page-title">运行 #{{ run.id }}</h1>
+    <p class="page-subtitle">
+      <span class="status-line"><span class="{{ style[2] }}"></span>{{ style[1] }}</span>
+      · {{ run.report_date|cn_date }}
+      · {{ '自动触发' if run.trigger_type == 'scheduled' else '手动触发' }}
+      {%- if run.started_at %} · 开始于 {{ run.started_at|ago }}{% endif %}
+      {#- 用时 ticks in the browser between polls. The server still renders the
+          current value, so this reads correctly with JS off and never flashes
+          empty on first paint. The newline before <span> is deliberate: HTML
+          collapses it to the space that separates the label from the number. #}
+      {%- if run.started_at %} · 用时
+        <span data-elapsed
+              data-elapsed-start="{{ run.started_at|isoutc }}"
+              data-elapsed-live="{{ '1' if run.is_active else '0' }}"
+              data-elapsed-final="{{ duration }}">{{ duration }}</span>
+      {%- endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if report %}
+      <a class="btn btn-primary" href="/reports/{{ report.id }}">查看日报</a>
+    {% endif %}
+    {% if run.is_active %}
+      <form method="post" action="/runs/{{ run.id }}/cancel" class="inline"
+            data-confirm="取消这次监测？已完成的模块结果会保留。">
+        <button type="submit" class="btn btn-danger">取消任务</button>
+      </form>
+    {% endif %}
+    <a class="btn btn-ghost" href="/runs">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回</a>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack">
+    {# --- 实时区域：阶段 / 模块 / 数据源状态 ---
+         One fragment polls itself while the run is active, so the module rows,
+         counters and source health update in place with no manual refresh. --#}
+    {% include "partials/run_live.html" with context %}
+
+    {# --- 执行日志 --- #}
+    <div class="surface">
+      <div class="surface-title">执行日志</div>
+      <div class="surface-pad" style="padding-top:0">
+        <div class="log" data-autoscroll>
+          {% include "partials/run_log.html" with context %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="surface">
+      <div class="surface-title">产出</div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">采集来源</div></div>
+        <div class="settings-row-value">{{ run.total_articles }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">新增事件</div></div>
+        <div class="settings-row-value">{{ run.total_new_events }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">更新事件</div></div>
+        <div class="settings-row-value">{{ run.total_updated_events }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">入报条目</div></div>
+        <div class="settings-row-value">{{ run.total_report_items }}</div>
+      </div>
+    </div>
+
+    {% if usage and usage.calls %}
+    <div class="surface">
+      <div class="surface-title">模型调用</div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">调用次数</div></div>
+        <div class="settings-row-value">{{ usage.calls }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main">
+          <div class="settings-row-title" style="font-size:13.5px">Tokens</div>
+          {% if not usage.total_tokens %}
+            <div class="settings-row-desc">接口未返回用量，不做估算</div>
+          {% endif %}
+        </div>
+        <div class="settings-row-value">{{ usage.total_tokens|number if usage.total_tokens else '—' }}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-main"><div class="settings-row-title" style="font-size:13.5px">平均延迟</div></div>
+        <div class="settings-row-value">{{ usage.avg_latency_ms }} ms</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if run.error_message %}
+    <div class="surface">
+      <div class="surface-title">错误</div>
+      <div class="surface-pad" style="padding-top:0">
+        <p class="small" style="color:var(--error-text);line-height:1.7">{{ run.error_message }}</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
