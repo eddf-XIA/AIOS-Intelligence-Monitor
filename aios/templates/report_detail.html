@@ -1,14 +1,23 @@
-{% extends "base.html" %}
+{#- One report page, two ways in. When it was opened from 简易版 the whole
+    page renders inside the Simple shell with a 返回主页 link, so the detour is
+    obvious and reversible; from 本地专业版 it keeps the sidebar and the
+    报告 breadcrumb. The report body below is identical either way - there is
+    one report system, not two. -#}
+{% extends "base_simple.html" if from_simple else "base.html" %}
 {% block title %}{{ report.report_date|datetext }} 日报 · {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div class="page-header-text">
-    <div class="breadcrumb">
-      <a href="/reports">报告</a>
-      {{ ui.icon('chevron-right', 'icon icon-sm') }}
-      <span>{{ report.report_date|datetext }}</span>
-    </div>
+    {% if from_simple %}
+      <a class="back-link" href="/">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回主页</a>
+    {% else %}
+      <div class="breadcrumb">
+        <a href="/reports">报告</a>
+        {{ ui.icon('chevron-right', 'icon icon-sm') }}
+        <span>{{ report.report_date|datetext }}</span>
+      </div>
+    {% endif %}
     <h1 class="page-title">{{ report.report_date|cn_date }}情报日报</h1>
     <p class="page-subtitle">
       全球智能终端操作系统监测日报 · {{ report.item_count }} 条情报
@@ -51,9 +60,10 @@
 </div>
 
 <div class="segmented" style="margin-bottom:var(--space-6)" role="tablist">
-  <a href="/reports/{{ report.id }}?view=report" {% if view == 'report' %}aria-current="true"{% endif %}>日报</a>
-  <a href="/reports/{{ report.id }}?view=evidence" {% if view == 'evidence' %}aria-current="true"{% endif %}>证据</a>
-  <a href="/reports/{{ report.id }}?view=events" {% if view == 'events' %}aria-current="true"{% endif %}>事件</a>
+  {% set origin = '&from=simple' if from_simple else '' %}
+  <a href="/reports/{{ report.id }}?view=report{{ origin }}" {% if view == 'report' %}aria-current="true"{% endif %}>日报</a>
+  <a href="/reports/{{ report.id }}?view=evidence{{ origin }}" {% if view == 'evidence' %}aria-current="true"{% endif %}>证据</a>
+  <a href="/reports/{{ report.id }}?view=events{{ origin }}" {% if view == 'events' %}aria-current="true"{% endif %}>事件</a>
 </div>
 
 {% if coverage_notice %}
@@ -136,6 +146,15 @@
             </div>
           {% endfor %}
         </div>
+      </div>
+    {% endif %}
+
+    {% if from_simple %}
+      <div class="result-menu" style="margin-top:var(--space-8)">
+        <a class="btn btn-sm" href="/simple/changes/{{ report.id }}">查看变化</a>
+        <a class="btn btn-sm" href="/simple/sources/{{ report.id }}">来源证据</a>
+        <a class="btn btn-sm" href="/simple/history{% if report.research_topic_id %}?topic_id={{ report.research_topic_id }}{% endif %}">历史记录</a>
+        <a class="btn btn-sm" href="/">返回主页</a>
       </div>
     {% endif %}
 

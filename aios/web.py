@@ -237,15 +237,38 @@ def redirect(url: str, message: str = "", level: str = "ok") -> RedirectResponse
     return RedirectResponse(url=url, status_code=303)
 
 
+def current_mode() -> str:
+    """The active application mode, read fresh for each render.
+
+    Read here rather than passed by every router: the mode switch appears in
+    both shells and on every page, so making it a render-time concern means no
+    handler can forget to supply it.
+    """
+    from .database import session_scope
+    from .services import mode_service
+
+    try:
+        with session_scope() as session:
+            return mode_service.get_mode(session)
+    except Exception:  # pragma: no cover - before the DB exists
+        from .services.mode_service import DEFAULT_MODE
+
+        return DEFAULT_MODE
+
+
 def render(
     request: Request, template: str, context: Optional[dict] = None, status_code: int = 200
 ) -> HTMLResponse:
     """Render a template with the standard context additions."""
+    from .services.mode_service import MODE_LABELS
+
     data = dict(context or {})
     data["request"] = request
     data.setdefault("flash", request.query_params.get("msg", ""))
     data.setdefault("flash_level", request.query_params.get("lvl", "ok"))
     data.setdefault("nav", "")
+    data.setdefault("app_mode", current_mode())
+    data.setdefault("mode_labels", MODE_LABELS)
     return templates.TemplateResponse(request, template, data, status_code=status_code)
 
 

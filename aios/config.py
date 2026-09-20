@@ -90,6 +90,25 @@ USER_AGENT = "Mozilla/5.0 (compatible; AIOS-Monitor/2.0; +local-research)"
 #: read once by :mod:`aios.services.provider_migration` and then superseded by
 #: the ``llm_provider_configs`` table.
 DEFAULT_SETTINGS: dict[str, str] = {
+    # --- application mode (v2.2) ---
+    # "simple" is the recommended default: a first-time user lands on the
+    # one-page research workflow rather than the monitoring console.
+    "app_mode": "simple",
+    # Which research agent 简易版 uses. Empty means "not configured yet", which
+    # the Simple home renders as an inline setup prompt rather than an error.
+    "research_provider_id": "",
+    "research_agent_id": "",
+    "research_default_window_hours": "72",
+    # Explicit opt-in only: a failed research run must never quietly become a
+    # Classic collection run (see the coverage semantics note in the README).
+    "research_allow_classic_fallback": "false",
+    "simple_schedule_enabled": "false",
+    "simple_schedule_time": "08:00",
+    # Which research topic 简易版 is currently working on. Persisted so that
+    # opening a report and pressing 返回主页 restores the user's context
+    # instead of an empty page.
+    "simple_active_topic_id": "",
+
     "deepseek_base_url": "https://api.deepseek.com",
     "deepseek_model": "deepseek-flash",
     "deepseek_temperature": "0.2",

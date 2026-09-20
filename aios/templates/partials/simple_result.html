@@ -1,0 +1,73 @@
+{% import "_icons.html" as ui with context %}
+{#- The result card: headline numbers, today's focus, and four ways onward.
+
+    Deliberately short. Every report paragraph, every source and the whole
+    timeline exist - on their own pages. Putting them here would turn the
+    one-page home into the dashboard Simple mode was built to replace. -#}
+<div class="result-card appear">
+  <div class="result-head">
+    {% if partial %}
+      <span class="result-state result-state-warn">部分完成</span>
+    {% else %}
+      <span class="result-state">研究完成</span>
+    {% endif %}
+    <div class="spacer"></div>
+    <span class="result-elapsed">用时 {{ duration }}</span>
+  </div>
+
+  {% if partial %}
+    <div class="notice" style="margin-top:var(--space-4)" role="status">
+      {{ ui.icon('alert', 'icon icon-sm') }}
+      <span>{{ partial_notice }}</span>
+    </div>
+  {% endif %}
+
+  {% if report and report.item_count %}
+    <div class="result-headline">
+      {{ report.item_count }}<small>项重要动态</small>
+    </div>
+    <div class="result-counts">
+      新增 {{ report.new_count }} · 更新 {{ report.updated_count }}
+      {%- if report.source_count %} · {{ report.source_count }} 个来源{% endif %}
+    </div>
+
+    {% if report.headline_json and (report.headline_json.title or report.headline_json.body) %}
+      <div class="result-focus">
+        <div class="result-focus-label">今日焦点</div>
+        {% if report.headline_json.title %}
+          <div class="result-focus-title">{{ report.headline_json.title }}</div>
+        {% endif %}
+        {% if report.headline_json.body %}
+          <div class="result-focus-body">{{ report.headline_json.body|truncate_text(280) }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="result-menu">
+      <div class="result-menu-primary">
+        <a class="btn btn-primary" href="/reports/{{ report.id }}?from=simple">
+          {{ ui.icon('reports', 'icon icon-sm') }} 查看完整报告
+        </a>
+      </div>
+      <a class="btn btn-sm" href="/simple/changes/{{ report.id }}">查看变化</a>
+      <a class="btn btn-sm" href="/simple/sources/{{ report.id }}">来源证据</a>
+      <a class="btn btn-sm" href="/simple/history{% if topic_id %}?topic_id={{ topic_id }}{% endif %}">历史记录</a>
+    </div>
+
+  {% elif report %}
+    {#- A complete pass that found nothing is a real, valid result - and is
+        allowed to say so *only* because coverage was complete. -#}
+    <div class="result-headline">0<small>项重要动态</small></div>
+    <div class="result-counts">{{ empty_notice }}</div>
+    <div class="result-menu">
+      <a class="btn btn-sm" href="/reports/{{ report.id }}?from=simple">查看完整报告</a>
+      <a class="btn btn-sm" href="/simple/sources/{{ report.id }}">来源证据</a>
+      <a class="btn btn-sm" href="/simple/history{% if topic_id %}?topic_id={{ topic_id }}{% endif %}">历史记录</a>
+    </div>
+
+  {% else %}
+    <div class="result-counts" style="margin-top:var(--space-4)">
+      本次运行没有生成报告。
+    </div>
+  {% endif %}
+</div>

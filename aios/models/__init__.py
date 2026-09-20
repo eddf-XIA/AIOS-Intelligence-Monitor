@@ -16,9 +16,23 @@ from .intelligence import (
     RawArticle,
 )
 from .providers import LLMProviderConfig, TaskModelRoute
+from .research import (
+    DEFAULT_WINDOW_HOURS,
+    ResearchTopic,
+    ResearchTopicRevision,
+)
 from .reports import Report, ReportItem, ReportSection
 from .sources import FeedSource, RunSourceStat
-from .runs import LLMUsage, ModuleRun, ModuleRunStatus, MonitoringRun, RunLog, RunStatus
+from .runs import (
+    RUN_ENGINE_AGENT,
+    RUN_ENGINE_CLASSIC,
+    LLMUsage,
+    ModuleRun,
+    ModuleRunStatus,
+    MonitoringRun,
+    RunLog,
+    RunStatus,
+)
 from .settings import AppSetting
 
 __all__ = [
@@ -37,6 +51,9 @@ __all__ = [
     "EventStatus",
     "LLMProviderConfig",
     "TaskModelRoute",
+    "ResearchTopic",
+    "ResearchTopicRevision",
+    "DEFAULT_WINDOW_HOURS",
     "Report",
     "ReportSection",
     "ReportItem",
@@ -48,5 +65,7 @@ __all__ = [
     "LLMUsage",
     "RunStatus",
     "ModuleRunStatus",
+    "RUN_ENGINE_CLASSIC",
+    "RUN_ENGINE_AGENT",
     "AppSetting",
 ]

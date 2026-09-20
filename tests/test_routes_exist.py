@@ -41,14 +41,17 @@ def seeded(client, session, make_event):
     session.commit()
 
     from aios.repositories import providers as providers_repo
+    from aios.repositories import research_topics as research_repo
     from aios.services import network_service
 
     provider = providers_repo.get_by_provider_id(session, "deepseek")
     feed = network_service.add_feed(session, "https://routes.example.com/feed.xml", "路由测试")
+    research_topic = research_repo.create_topic(session, name="路由测试研究主题")
     session.commit()
 
     return {
         "feed_id": feed.id,
+        "research_topic_id": research_topic.id,
         "module_id": module.id,
         "topic_id": topic.id,
         "query_id": query.id,
@@ -91,6 +94,16 @@ def test_every_get_route_exists(client, seeded):
         f"/monitoring/ai/modules/{ids['module_id']}/topic",
         "/settings",
         "/settings/ai",
+        # --- v2.2: 简易版 ---
+        "/dashboard",
+        "/simple",
+        "/simple/engine",
+        "/simple/history",
+        f"/simple/history?topic_id={ids['research_topic_id']}",
+        f"/simple/changes/{ids['report_id']}",
+        f"/simple/sources/{ids['report_id']}",
+        f"/simple/run/{ids['run_id']}",
+        f"/reports/{ids['report_id']}?from=simple",
         "/healthz",
         "/static/css/app.css",
         "/static/js/app.js",
@@ -106,7 +119,14 @@ def test_every_post_route_exists(client, seeded, monkeypatch):
     from aios.services import keyring_service, run_manager
 
     monkeypatch.setattr(keyring_service, "get_api_key", lambda **k: "sk-" + "x" * 20)
-    monkeypatch.setattr(run_manager.manager, "start_run", lambda **k: seeded["run_id"])
+    # Patched on the class: monkeypatch restores an instance attribute by
+    # assigning the bound method it captured, which permanently shadows the
+    # class attribute on this process-wide singleton and would defeat every
+    # later test that patches the same method.
+    monkeypatch.setattr(
+        run_manager.RunManager, "start_run",
+        lambda self, **k: seeded["run_id"],
+    )
     # Never reach the network from a route-existence check.
     monkeypatch.setattr(
         providers_router, "test_provider_row",
@@ -133,6 +153,30 @@ def test_every_post_route_exists(client, seeded, monkeypatch):
 
     monkeypatch.setattr(config_ai.config_generator, "ConfigGenerator", OfflineGenerator)
     monkeypatch.setattr(network_service, "run_diagnostics", lambda *a, **k: [])
+
+    # The 简易版 routes must not reach a provider or start a worker either.
+    from aios.routers import simple as simple_router
+    from aios.services.research_topic_service import BriefGenerationError
+
+    class OfflineBriefService:
+        """Proves the route exists without letting it call a provider."""
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def readiness_error(self) -> str:
+            return ""
+
+        def refine(self, *args, **kwargs):
+            raise BriefGenerationError("route check: generation not attempted")
+
+        revise = refine
+
+    monkeypatch.setattr(simple_router, "ResearchTopicService", OfflineBriefService)
+    monkeypatch.setattr(
+        run_manager.RunManager, "start_research_run",
+        lambda self, topic_id, trigger_type="manual": seeded["run_id"],
+    )
 
     ids = seeded
     posts = [
@@ -194,6 +238,25 @@ def test_every_post_route_exists(client, seeded, monkeypatch):
          {"description": "新增一个主题。"}),
         ("/monitoring/ai/apply", {"topic_count": "0"}),
         (f"/monitoring/ai/modules/{ids['module_id']}/topic/apply", {"topic_count": "0"}),
+        # --- v2.2: 简易版 ---
+        ("/mode", {"mode": "simple", "next": "/"}),
+        ("/simple/engine", {"provider_id": "deepseek", "default_model": "deepseek-chat",
+                            "api_key": "", "agent_id": "local_collection",
+                            "action": "save"}),
+        ("/simple/topics/refine", {"description": "关注人形机器人进展。"}),
+        ("/simple/topics", {"name": "路由测试主题 2", "brief": "目标",
+                            "focus_areas": "技术进展", "window_hours": "72"}),
+        (f"/simple/topics/{ids['research_topic_id']}/load", {}),
+        ("/simple/topics/edit", {"name": "路由测试研究主题", "brief": "目标",
+                                 "window_hours": "72"}),
+        ("/simple/topics/save", {"name": "路由测试主题 3", "brief": "目标",
+                                 "window_hours": "72", "action": "save"}),
+        (f"/simple/topics/{ids['research_topic_id']}/revise",
+         {"instruction": "多关注商业化。"}),
+        (f"/simple/topics/{ids['research_topic_id']}/schedule",
+         {"enabled": "on", "time": "08:00"}),
+        ("/simple/research", {"topic_id": ids["research_topic_id"]}),
+        (f"/simple/run/{ids['run_id']}/cancel", {}),
     ]
 
     dead = []
@@ -209,6 +272,8 @@ def test_destructive_routes_exist(client, seeded):
     ids = seeded
     for url in [
         f"/settings/ai/providers/{ids['provider_id']}/key/delete",
+        # v2.2 has no destructive 简易版 route: archiving a research topic
+        # deliberately keeps its events, observations and reports.
         f"/settings/ai/providers/{ids['provider_id']}/delete",
         f"/monitoring/queries/{ids['query_id']}/delete",
         f"/monitoring/topics/{ids['topic_id']}/archive",

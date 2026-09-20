@@ -55,10 +55,15 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     from .routers import (
-        compare, config_ai, dashboard, events, monitoring, network,
-        providers, reports, runs, settings,
+        compare, config_ai, dashboard, events, mode, monitoring, network,
+        providers, reports, runs, settings, simple,
     )
 
+    # The mode switch and the mode-aware "/" come first: ``simple`` owns the
+    # root path and dispatches to the Overview when 本地专业版 is active, so it
+    # must be registered before any router that could shadow "/".
+    app.include_router(mode.router)
+    app.include_router(simple.router)
     app.include_router(dashboard.router)
     # Registered before the monitoring CRUD router so the /monitoring/ai/*
     # paths are matched by their own handlers.

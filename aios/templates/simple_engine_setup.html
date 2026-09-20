@@ -1,0 +1,206 @@
+{% extends "base_simple.html" %}
+{% block title %}研究引擎 · {{ app_name }}{% endblock %}
+
+{#- Inline first-time setup.
+
+    Compact and single-purpose: service, key, agent, save. It returns straight
+    to the Simple home afterwards - a first-time user should not be left
+    standing in a Settings area wondering how to get back to what they were
+    doing.
+
+    The credential goes from this form to the OS keyring and is dropped. It is
+    never written to SQLite, never logged, and only its masked tail is ever
+    rendered. That is the same invariant the Professional provider page holds;
+    this page reuses the same service rather than reimplementing it. -#}
+
+{% block content %}
+<a class="back-link" href="/">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回主页</a>
+
+<div class="simple-header">
+  <h1 class="simple-title">研究引擎</h1>
+  <p class="simple-subtitle">选择负责研究的 AI 服务。API Key 只保存在本机系统凭据管理器中。</p>
+</div>
+
+{% if test_result %}
+  <div class="notice {{ 'notice-info' if test_result.ok else '' }}" role="status">
+    {{ ui.icon('check' if test_result.ok else 'alert', 'icon icon-sm') }}
+    <span>{{ test_result.message }}</span>
+  </div>
+{% endif %}
+
+<form method="post" action="/simple/engine">
+  <div class="simple-block">
+    <div class="simple-block-label">添加 / 更新 AI 服务</div>
+    <div class="simple-block-body">
+      <div class="field">
+        <label for="provider_id">服务商</label>
+        <select id="provider_id" name="provider_id">
+          {% for preset in presets %}
+            <option value="{{ preset.provider_id }}"
+                    {% if preset.provider_id == selected_provider %}selected{% endif %}>
+              {{ preset.display_name }}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="field-hint">
+          留空的字段会使用该服务商的默认接入地址。
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="default_model">模型名称</label>
+        <input type="text" id="default_model" name="default_model"
+               value="{{ current.default_model if current else '' }}"
+               placeholder="{{ model_placeholder or '例如 deepseek-chat' }}">
+      </div>
+
+      <div class="field">
+        <label for="api_key">API Key</label>
+        <div class="inline-form">
+          <input type="password" id="api_key" name="api_key"
+                 placeholder="{{ current.masked_key if current and current.has_api_key else '粘贴你的 API Key' }}"
+                 autocomplete="off" spellcheck="false">
+          <button type="button" class="btn btn-sm" data-toggle-visibility="api_key">显示</button>
+        </div>
+        <div class="field-hint">
+          {% if current and current.has_api_key %}
+            已保存一个 Key（{{ current.masked_key }}）。留空表示不修改。
+          {% else %}
+            保存到：{{ keyring_backend }}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="base_url">接入地址（可选）</label>
+        <input type="text" id="base_url" name="base_url"
+               value="{{ current.base_url if current else '' }}"
+               placeholder="{{ base_url_placeholder or '留空使用默认地址' }}">
+      </div>
+    </div>
+  </div>
+
+  {#- 研究 Agent.
+
+      Two backends, kept visibly apart. The 研究引擎 list contains only agents
+      that search and read on the vendor's side - what 简易版 promises. The
+      local collection backend is real and supported, but it runs this
+      machine's collectors and inherits this machine's network reality, so it
+      is disclosed under 高级 and named for what it is. Nothing merges the two
+      lists, and nothing falls back from one to the other. -#}
+  <div class="simple-block">
+    <div class="simple-block-label">研究引擎</div>
+    <div class="simple-block-body">
+      {% if supports_remote_research %}
+        <div class="field">
+          <label for="agent_id">由谁执行研究</label>
+          {#- One control, two groups that are never confusable. The remote
+              group is what 简易版 is; the 高级 group is opt-in and says on its
+              own label that the fetching happens on this machine. -#}
+          <select id="agent_id" name="agent_id">
+            <optgroup label="远程研究 Agent（推荐）">
+              {% for spec in agents %}
+                <option value="{{ spec.agent_id }}" {% if spec.agent_id == selected_agent %}selected{% endif %}>
+                  {{ spec.display_name }}
+                </option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="高级：由本机采集">
+              {% for spec in advanced_agents %}
+                <option value="{{ spec.agent_id }}" {% if spec.agent_id == selected_agent %}selected{% endif %}>
+                  {{ spec.display_name }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          </select>
+          <div class="field-hint">
+            {% for spec in agents + advanced_agents %}
+              {% if spec.agent_id == selected_agent %}{{ spec.description }}{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        {#- No remote agent for this provider. Say so plainly and do not
+            present a selector that implies otherwise. -#}
+        <div class="notice" role="status">
+          {{ ui.icon('info', 'icon icon-sm') }}
+          <span>{{ unavailable_reason }}</span>
+        </div>
+
+        <details class="advanced">
+          <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 高级：使用本机采集来源</summary>
+          <div class="advanced-body">
+            <div class="field">
+              <label for="agent_id">研究后端</label>
+              <select id="agent_id" name="agent_id">
+                <option value="">不使用（等待配置联网研究服务）</option>
+                {% for spec in advanced_agents %}
+                  <option value="{{ spec.agent_id }}" {% if spec.agent_id == selected_agent %}selected{% endif %}>
+                    {{ spec.display_name }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="field-hint">
+                {% for spec in advanced_agents %}{{ spec.description }}{% endfor %}
+                本地检索依赖本机网络与「网络模式 / 采集设置」，与远程研究 Agent 不同。
+              </div>
+            </div>
+          </div>
+        </details>
+      {% endif %}
+
+      <details class="advanced">
+        <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 各 Agent 的能力说明</summary>
+        <div class="advanced-body">
+          {% for spec in all_agents %}
+            <div style="margin-bottom:10px">
+              <strong>{{ spec.display_name }}</strong>
+              {% if not spec.is_research_capable %}
+                <span class="badge s-muted">不能联网研究</span>
+              {% elif spec.is_remote %}
+                <span class="badge s-ok">远程研究 Agent</span>
+              {% else %}
+                <span class="badge s-muted">本机采集</span>
+              {% endif %}
+              <div>{{ spec.description }}</div>
+              {% if spec.capability_labels() %}
+                <div class="muted">能力：{{ spec.capability_labels()|join(' · ') }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="brief-actions" style="border-top:none;padding-top:0">
+    <button type="submit" name="action" value="test" class="btn">测试连接</button>
+    <div class="spacer"></div>
+    <a class="btn" href="/">取消</a>
+    <button type="submit" name="action" value="save" class="btn btn-primary">保存</button>
+  </div>
+</form>
+
+{% if providers %}
+  <div class="simple-block" style="margin-top:var(--space-8)">
+    <div class="simple-block-label">已配置的服务</div>
+    <div class="report-list">
+      {% for row in providers %}
+        <div class="report-list-row" style="cursor:default">
+          <span class="report-list-main">
+            <span class="report-list-title">{{ row.display_name }}</span>
+            <span class="report-list-meta">
+              {{ row.default_model or '未设置模型' }}
+              {%- if row.has_api_key %} · Key {{ row.api_key_last_four }}{% endif %}
+              {%- if row.is_default %} · 默认{% endif %}
+            </span>
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="simple-run-hint" style="text-align:left;margin-top:var(--space-3)">
+      需要更细的控制（多服务商、按任务分配模型、代理设置）请切换到本地专业版。
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

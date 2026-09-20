@@ -1,11 +1,18 @@
-"""Background execution of monitoring runs.
+"""Background execution of monitoring and research runs.
 
 An HTTP request must never wait for a pipeline that takes minutes, so the
 router creates a queued run, hands it to this manager, and returns immediately;
-the browser then polls ``/runs/{id}/status``.
+the browser then polls ``/runs/{id}/status`` (Professional) or
+``/simple/run/{id}`` (Simple).
 
 A single worker thread is used deliberately: concurrent runs would fight over
-the same SQLite file and produce two reports for the same day.
+the same SQLite file and produce two reports for the same day. That also means
+Classic and Agent runs cannot collide - both go through this one queue, which
+is why switching modes mid-run is safe.
+
+Which pipeline executes is decided by the run's ``engine`` column, not by the
+caller: a run row is self-describing, so a scheduled research run recovered
+after a restart still executes as research.
 """
 
 from __future__ import annotations
@@ -17,7 +24,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Optional
 
 from ..database import session_scope
-from ..models import RunStatus
+from ..models import RUN_ENGINE_AGENT, RUN_ENGINE_CLASSIC, RunStatus
 from ..repositories import runs as runs_repo
 from ..timeutil import local_today, utcnow
 from .pipeline import run_pipeline
@@ -56,12 +63,20 @@ class RunManager:
     # -- starting ------------------------------------------------------------
 
     def start_run(
-        self, trigger_type: str = "manual", report_date: Optional[dt.date] = None
+        self,
+        trigger_type: str = "manual",
+        report_date: Optional[dt.date] = None,
+        engine: str = RUN_ENGINE_CLASSIC,
+        research_topic_id: Optional[int] = None,
     ) -> int:
         """Queue a run and return its id.
 
         Raises :class:`RunAlreadyActive` if one is already in flight - the
         scheduler relies on this to skip rather than pile up.
+
+        ``engine`` selects which pipeline executes. It is persisted on the run
+        rather than captured in the closure so a run row remains the single
+        source of truth about what it is.
         """
         with self._lock:
             if self._current_run_id is not None:
@@ -84,6 +99,9 @@ class RunManager:
                 run = runs_repo.create_run(
                     session, report_date=report_date or local_today(), trigger_type=trigger_type
                 )
+                run.engine = engine or RUN_ENGINE_CLASSIC
+                run.research_topic_id = research_topic_id
+                session.flush()
                 run_id = run.id
 
             self._current_run_id = run_id
@@ -95,9 +113,19 @@ class RunManager:
         logger.info("Queued monitoring run %s (%s)", run_id, trigger_type)
         return run_id
 
+    def start_research_run(
+        self, topic_id: int, trigger_type: str = "manual"
+    ) -> int:
+        """Queue a Research Agent run for one research topic."""
+        return self.start_run(
+            trigger_type=trigger_type,
+            engine=RUN_ENGINE_AGENT,
+            research_topic_id=topic_id,
+        )
+
     def _execute(self, run_id: int, cancel_event: threading.Event) -> str:
         try:
-            return run_pipeline(run_id, cancel_check=cancel_event.is_set)
+            return _dispatch(run_id, cancel_event.is_set)
         except Exception:  # pragma: no cover - the pipeline handles its own errors
             logger.exception("Run %s crashed outside the pipeline", run_id)
             try:
@@ -140,12 +168,33 @@ class RunManager:
         self._executor.shutdown(wait=wait, cancel_futures=not wait)
 
 
+def _dispatch(run_id: int, cancel_check) -> str:
+    """Run the pipeline the run row asks for.
+
+    Imported lazily: :mod:`aios.services.research_pipeline` imports the LLM and
+    research layers, and this module is imported at application startup.
+    """
+    with session_scope() as session:
+        run = runs_repo.get_run(session, run_id)
+        engine = (run.engine if run is not None else "") or RUN_ENGINE_CLASSIC
+
+    if engine == RUN_ENGINE_AGENT:
+        from .research_pipeline import run_research_pipeline
+
+        return run_research_pipeline(run_id, cancel_check=cancel_check)
+    return run_pipeline(run_id, cancel_check=cancel_check)
+
+
 #: Process-wide manager. The app is single-user, so one instance is correct.
 manager = RunManager()
 
 
 def start_run(trigger_type: str = "manual", report_date: Optional[dt.date] = None) -> int:
     return manager.start_run(trigger_type=trigger_type, report_date=report_date)
+
+
+def start_research_run(topic_id: int, trigger_type: str = "manual") -> int:
+    return manager.start_research_run(topic_id, trigger_type=trigger_type)
 
 
 def cancel_run(run_id: int) -> bool:

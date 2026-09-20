@@ -1,0 +1,84 @@
+{% import "_icons.html" as ui with context %}
+{#- The compact Research Brief preview.
+
+    Five readable lines, not a form. A normal user cannot evaluate a module
+    with four topics and eleven search expressions, but they can absolutely
+    evaluate "全球 · 最近72小时 · 技术进展 · 产品发布" and say "yes, that is
+    what I meant".
+
+    The editable fields live behind 修改 / 展开详情 so the calm path stays calm.
+    Nothing here is written to the database until the user presses 保存主题 or
+    开始研究 - this fragment is a preview, and previewing must not persist. -#}
+{% if brief_error %}
+  <div class="notice" role="status">
+    {{ ui.icon('alert', 'icon icon-sm') }}
+    <span>{{ brief_error }}</span>
+  </div>
+{% endif %}
+
+{% if brief %}
+<div class="brief appear" id="brief-preview">
+  <div class="brief-name">{{ brief.name }}</div>
+  {% if brief.scope_line %}<div class="brief-scope">{{ brief.scope_line }}</div>{% endif %}
+  {% if brief.focus_line %}<div class="brief-focus">{{ brief.focus_line }}</div>{% endif %}
+
+  {% if brief.keywords %}
+    <div class="brief-line">
+      <span class="brief-line-label">关注：</span>
+      <span class="brief-line-value">{{ brief.keyword_line }}</span>
+    </div>
+  {% endif %}
+  {% if brief.exclusions %}
+    <div class="brief-line">
+      <span class="brief-line-label">排除：</span>
+      <span class="brief-line-value">{{ brief.exclusion_line }}</span>
+    </div>
+  {% endif %}
+
+  {% if brief.notes %}
+    <div class="brief-note">{{ brief.notes }}</div>
+  {% endif %}
+
+  {#- Detail is available, never imposed. -#}
+  {% if brief.brief or brief.scope %}
+    <details class="advanced">
+      <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 展开详情</summary>
+      <div class="advanced-body">
+        {% if brief.brief %}<div><strong>研究目标：</strong>{{ brief.brief }}</div>{% endif %}
+        {% if brief.scope %}
+          <div style="margin-top:8px"><strong>研究范围：</strong>{{ brief.scope }}</div>
+        {% endif %}
+      </div>
+    </details>
+  {% endif %}
+
+  <div class="brief-actions">
+    {#- Every action carries the whole brief forward in hidden fields, so the
+        preview survives a page load without being written to the database
+        first. That is what makes "run a temporary topic without saving it"
+        possible. -#}
+    <form method="post" action="/simple/topics/edit" class="inline">
+      {% include "partials/simple_brief_fields.html" %}
+      {% if topic %}<input type="hidden" name="topic_id" value="{{ topic.id }}">{% endif %}
+      <button type="submit" class="btn btn-sm">{{ ui.icon('edit', 'icon icon-sm') }} 修改</button>
+    </form>
+
+    {% if not topic %}
+      <form method="post" action="/simple/topics" class="inline">
+        {% include "partials/simple_brief_fields.html" %}
+        <button type="submit" class="btn btn-sm">保存主题</button>
+      </form>
+    {% endif %}
+
+    <div class="spacer"></div>
+
+    <form method="post" action="/simple/research" class="inline">
+      {% include "partials/simple_brief_fields.html" %}
+      {% if topic %}<input type="hidden" name="topic_id" value="{{ topic.id }}">{% endif %}
+      <button type="submit" class="btn btn-primary btn-sm" {% if not engine.ready %}disabled{% endif %}>
+        {{ ui.icon('play', 'icon icon-sm') }} 开始研究
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}

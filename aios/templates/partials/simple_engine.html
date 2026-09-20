@@ -1,0 +1,66 @@
+{% import "_icons.html" as ui with context %}
+{#- 研究引擎 - the user's simplified concept for provider + model + agent.
+
+    A normal user should not have to learn the difference between a provider, a
+    model and an agent. They should learn one thing: "this is the AI doing my
+    research, and it is available."
+
+    When nothing is configured this renders *inline* rather than sending the
+    user to a Settings page. Bouncing a first-time user out of the workflow to
+    fill in a form and find their way back is exactly the journey Simple mode
+    exists to remove. -#}
+<div class="simple-block">
+  <div class="simple-block-label">研究引擎</div>
+  <div class="simple-block-body">
+    {% if not engine.configured %}
+      <div class="engine-empty">
+        <div class="engine-empty-title">尚未配置研究引擎</div>
+        <div class="engine-empty-desc">
+          {% if engine.error %}{{ engine.error }}<br>{% endif %}
+          AIOS 需要一个 AI 服务来完成研究。API Key 只保存在本机系统凭据管理器中，
+          不会写入数据库或报告文件。
+        </div>
+        <a class="btn btn-primary" href="/simple/engine">
+          {{ ui.icon('plus', 'icon icon-sm') }} 添加 AI 服务
+        </a>
+      </div>
+    {% else %}
+      <div class="engine-row">
+        <span class="engine-chip">
+          {{ engine.provider_name }}
+          {%- if engine.model %}<span class="engine-chip-sub">{{ engine.model }}</span>{% endif %}
+        </span>
+        <span class="engine-chip">{{ engine.agent_name }}</span>
+        {% if engine.is_local %}
+          {#- The one case where the user's own network reach still matters.
+              Remote research runs on the vendor's side, so网络模式 is
+              irrelevant there and is deliberately not mentioned. -#}
+          <span class="engine-chip">本机采集</span>
+        {% endif %}
+
+        {% if engine.ready %}
+          <span class="engine-state engine-state-ok">
+            <span class="dot dot-success"></span>{{ engine.status_label }}
+          </span>
+        {% else %}
+          <span class="engine-state engine-state-bad">
+            <span class="dot dot-error"></span>{{ engine.status_label }}
+          </span>
+        {% endif %}
+
+        <div class="spacer"></div>
+        <a class="btn btn-sm" href="/simple/engine">管理</a>
+      </div>
+
+      {% if engine.error %}
+        {#- Stated plainly and in full. A user whose engine cannot browse the
+            web needs to know that, not be left with a report built from model
+            memory. -#}
+        <div class="notice" style="margin-top:var(--space-4);margin-bottom:0" role="status">
+          {{ ui.icon('alert', 'icon icon-sm') }}
+          <span>{{ engine.error }}</span>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

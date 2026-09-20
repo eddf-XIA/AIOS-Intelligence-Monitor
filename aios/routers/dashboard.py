@@ -96,7 +96,14 @@ def _source_count(item) -> int:
     return len([link for link in observation.sources if link.article is not None])
 
 
-def _dashboard_context(session: Session) -> dict:
+def dashboard_context(session: Session) -> dict:
+    """The Overview page context.
+
+    Public because ``GET /`` is mode-aware and lives in
+    :mod:`aios.routers.simple`: in 本地专业版 that handler renders this exact
+    context, so there is one Overview implementation rather than two that can
+    drift apart.
+    """
     last_run = runs_repo.latest_run(session)
     latest_report = reports_repo.latest_report(session)
 
@@ -135,10 +142,14 @@ def _dashboard_context(session: Session) -> dict:
     }
 
 
-@router.get("/")
+@router.get("/dashboard")
 def dashboard(request: Request, session: Session = Depends(get_db)):
-    """Home page."""
-    return render(request, "dashboard.html", _dashboard_context(session))
+    """The Professional-mode Overview.
+
+    ``/`` also renders this whenever 本地专业版 is the active mode; this route
+    is the stable direct address for it.
+    """
+    return render(request, "dashboard.html", dashboard_context(session))
 
 
 @router.get("/dashboard/status")

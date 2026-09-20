@@ -145,14 +145,28 @@ def session(db):
 
 @pytest.fixture
 def client(db, monkeypatch):
-    """A TestClient with the scheduler and run manager kept inert."""
+    """A TestClient with the scheduler and run manager kept inert.
+
+    ``RunManager.shutdown`` is neutralised for the same reason the scheduler
+    is, but it matters more: the manager is a process-wide singleton owning one
+    ThreadPoolExecutor, and the application lifespan shuts it down on exit. One
+    test closing its client would therefore leave every later test unable to
+    queue a run at all ("cannot schedule new futures after shutdown").
+
+    Patched on the *class*, not on the ``manager`` instance: monkeypatch
+    restores an instance attribute by assigning the bound method it captured,
+    which permanently shadows the class attribute and silently defeats any
+    later class-level patch.
+    """
     from fastapi.testclient import TestClient
 
     from aios.app import create_app
     from aios.services import scheduler as scheduler_module
+    from aios.services.run_manager import RunManager
 
     monkeypatch.setattr(scheduler_module.scheduler, "start", lambda: None)
     monkeypatch.setattr(scheduler_module.scheduler, "shutdown", lambda wait=False: None)
+    monkeypatch.setattr(RunManager, "shutdown", lambda self, wait=False: None)
 
     with TestClient(create_app()) as test_client:
         yield test_client

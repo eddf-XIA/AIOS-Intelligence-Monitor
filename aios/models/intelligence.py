@@ -106,8 +106,30 @@ class IntelligenceEvent(Base, TimestampMixin):
     topic_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("topics.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    #: Set when the event was discovered through a Research Agent run rather
+    #: than Classic collection. Scopes the matching shortlist the same way
+    #: ``module_id`` does for Classic runs.
+    research_topic_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("research_topics.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     status: Mapped[str] = mapped_column(String(32), default=EventStatus.ACTIVE, index=True)
+
+    # --- identity fingerprint -------------------------------------------
+    #
+    # A research agent describes the same real-world event differently on
+    # different days ("Figure 发布 Helix 2" / "Figure 推出新一代人形机器人
+    # 智能系统 Helix 2"). Title equality cannot survive that, so the durable
+    # identity of an event is kept here and reused by the matcher on every
+    # later run. All nullable/defaulted: Classic events simply leave them empty
+    # and match exactly as they did in v2.1.
+    organization: Mapped[str] = mapped_column(String(200), default="", index=True)
+    product_or_project: Mapped[str] = mapped_column(String(200), default="", index=True)
+    event_type: Mapped[str] = mapped_column(String(64), default="")
+    entities_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    #: Canonical URLs already attributed to this event. A shared source URL is
+    #: the strongest available signal that two descriptions are one event.
+    canonical_urls_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
 
     first_seen_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     last_seen_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
@@ -119,6 +141,7 @@ class IntelligenceEvent(Base, TimestampMixin):
 
     module: Mapped[Optional["MonitorModule"]] = relationship()  # type: ignore[name-defined]
     topic: Mapped[Optional["Topic"]] = relationship()  # type: ignore[name-defined]
+    research_topic: Mapped[Optional["ResearchTopic"]] = relationship()  # type: ignore[name-defined]
     observations: Mapped[list["EventObservation"]] = relationship(
         back_populates="event",
         cascade="all, delete-orphan",
@@ -155,6 +178,15 @@ class EventObservation(Base):
     importance: Mapped[int] = mapped_column(Integer, default=3)
     confidence: Mapped[str] = mapped_column(String(16), default="medium")
 
+    #: Identity as described *on this day*. Kept per-observation as well as on
+    #: the event so a later run can match against how the story was worded
+    #: before, not only against its canonical form.
+    entities_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), default="")
+    #: When the real-world event happened, as reported. Distinct from
+    #: ``observation_date``, which is when *we* learned about it.
+    event_date: Mapped[Optional[dt.date]] = mapped_column(Date, nullable=True)
+
     #: Metrics literally present in the evidence; may be empty.
     structured_data_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     is_correction: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -170,6 +202,10 @@ class EventObservation(Base):
     @property
     def metrics(self) -> dict[str, Any]:
         return self.structured_data_json or {}
+
+    @property
+    def entity_list(self) -> list[str]:
+        return [str(x) for x in (self.entities_json or []) if str(x).strip()]
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<EventObservation {self.id} {self.observation_date}>"

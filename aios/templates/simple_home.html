@@ -1,0 +1,167 @@
+{% extends "base_simple.html" %}
+{% block title %}智能情报研究台 · {{ app_name }}{% endblock %}
+
+{#- The Simple home page IS the product.
+
+    The entire workflow lives here: connect an AI, pick or describe a topic,
+    let AI shape it, run, watch, read the result. A normal user should never
+    have to walk 设置 → 监测配置 → 模块 → 主题 → 检索式 → 运行 → 报告 just to
+    get a report.
+
+    Information-heavy views (the full report, the changes, the sources, the
+    timeline) open as their own pages and come straight back. -#}
+
+{% block content %}
+<div class="simple-header">
+  <h1 class="simple-title">智能情报研究台</h1>
+  <p class="simple-subtitle">告诉 AIOS 你关心什么，它负责研究、记住变化，并写成日报。</p>
+</div>
+
+{% include "partials/simple_engine.html" %}
+
+{#- --- Running / finished: the page transforms in place --- #}
+{% if run %}
+  <div class="simple-block">
+    <div class="simple-block-label">本次研究</div>
+    {% include "partials/simple_run.html" %}
+  </div>
+
+  {% if not run.is_active %}
+    <div class="simple-run-action">
+      <form method="post" action="/simple/research">
+        {% if active_topic %}<input type="hidden" name="topic_id" value="{{ active_topic.id }}">{% endif %}
+        <button type="submit" class="btn" {% if not engine.ready or not active_topic %}disabled{% endif %}>
+          再研究一次
+        </button>
+      </form>
+    </div>
+  {% endif %}
+{% endif %}
+
+{#- --- 研究主题 --- #}
+{% if not (run and run.is_active) %}
+<div class="simple-block">
+  <div class="simple-block-label">研究主题</div>
+
+  {% if recent_topics %}
+    <div class="topic-chips-label">最近使用</div>
+    <div class="topic-chips">
+      {% for item in recent_topics %}
+        <form method="post" action="/simple/topics/{{ item.id }}/load" class="topic-chip-form">
+          <button type="submit"
+                  class="topic-chip {{ 'is-active' if active_topic and active_topic.id == item.id else '' }}">
+            {{ item.name }}
+            {%- if item.run_count %}<span class="topic-chip-meta">{{ item.run_count }} 次</span>{% endif %}
+          </button>
+        </form>
+      {% endfor %}
+      <a class="topic-chip topic-chip-new" href="/?new=1">+ 新主题</a>
+    </div>
+  {% endif %}
+
+  {% if brief %}
+    {% include "partials/simple_brief.html" %}
+
+    {% if active_topic %}
+      {#- 自然语言修改：the same topic id, a new revision. Historical reports
+          stay attached, which is the whole reason this is an edit and not a
+          new topic. -#}
+      <details class="advanced">
+        <summary>{{ ui.icon('chevron-right', 'icon icon-sm') }} 用一句话调整这个主题</summary>
+        <div class="advanced-body">
+          <form method="post" action="/simple/topics/{{ active_topic.id }}/revise">
+            <textarea name="instruction" rows="2"
+                      placeholder="例如：以后多关注产业合作和商业化，少一点芯片参数。"></textarea>
+            <div class="topic-ask-actions">
+              <button type="submit" class="btn btn-sm">应用调整</button>
+              <span class="small muted">主题 ID 不变，历史报告继续关联到它。</span>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      {#- 每天自动研究 - no cron syntax, one switch and one time. -#}
+      <div class="simple-block-body" style="margin-top:var(--space-4)">
+        <form method="post" action="/simple/topics/{{ active_topic.id }}/schedule">
+          <div class="engine-row">
+            <label class="toggle">
+              <input type="checkbox" name="enabled" {% if active_topic.schedule_enabled %}checked{% endif %}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span>每天自动研究</span>
+            </label>
+            <input type="time" name="time" value="{{ active_topic.schedule_time or '08:00' }}"
+                   style="width:120px" aria-label="自动研究时间">
+            <div class="spacer"></div>
+            <button type="submit" class="btn btn-sm">保存</button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="simple-block-body topic-ask">
+      <div class="topic-ask-label">你想研究什么？</div>
+      <form method="post" action="/simple/topics/refine">
+        <textarea name="description" rows="4"
+                  placeholder="例如：关注全球智能终端操作系统和 AI 基础设施最近的重要进展，尤其关注鸿蒙、Android、AI PC、具身智能和太空智算。"
+                  >{{ description or '' }}</textarea>
+        <div class="topic-ask-actions">
+          <button type="submit" class="btn btn-primary btn-sm">
+            {{ ui.icon('intelligence', 'icon icon-sm') }} AI 完善主题
+          </button>
+          <span class="spacer"></span>
+          <span class="small muted">AI 会整理成一份研究主题，你确认后再开始。</span>
+        </div>
+      </form>
+
+      {% if brief_error %}
+        <div class="notice" style="margin-top:var(--space-4);margin-bottom:0" role="status">
+          {{ ui.icon('alert', 'icon icon-sm') }}
+          <span>{{ brief_error }}</span>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{#- --- The one primary action, when a brief is ready but no run has started --- #}
+{% if brief and not run %}
+  <div class="simple-run-action">
+    <form method="post" action="/simple/research">
+      {% include "partials/simple_brief_fields.html" %}
+      {% if active_topic %}<input type="hidden" name="topic_id" value="{{ active_topic.id }}">{% endif %}
+      <button type="submit" class="btn btn-primary" {% if not engine.ready %}disabled{% endif %}>
+        {{ ui.icon('play', 'icon icon-sm') }} 开始研究
+      </button>
+    </form>
+    {% if not engine.ready %}
+      <div class="simple-run-hint">{{ engine.error or '请先配置研究引擎。' }}</div>
+    {% elif not active_topic %}
+      <div class="simple-run-hint">可以直接研究，也可以先「保存主题」以便下次一键复用。</div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{#- --- 最近报告 --- #}
+{% if recent_reports %}
+  <div class="simple-block">
+    <div class="simple-block-label">最近报告</div>
+    <div class="report-list">
+      {% for row in recent_reports %}
+        <a class="report-list-row" href="/reports/{{ row.report.id }}?from=simple">
+          <span class="report-list-date">{{ row.report.report_date|cn_date }}</span>
+          <span class="report-list-main">
+            <span class="report-list-title">{{ row.topic_name or row.report.title|truncate_text(48) }}</span>
+            <span class="report-list-meta">
+              {{ row.report.item_count }} 项动态
+              {%- if row.report.item_count %} · 新增 {{ row.report.new_count }} · 更新 {{ row.report.updated_count }}{% endif %}
+            </span>
+          </span>
+          <span class="report-list-side">{{ ui.icon('chevron-right', 'icon icon-sm') }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

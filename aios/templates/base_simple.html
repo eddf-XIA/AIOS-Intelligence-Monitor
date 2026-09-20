@@ -1,0 +1,57 @@
+{% import "_icons.html" as ui with context %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+{#- The 简易版 shell.
+
+    Minimal on purpose. No module tree, no collector settings, no diagnostics -
+    Simple mode is not a dumbed-down admin panel, it is a different workflow,
+    and the navigation reflects that: 首页 and 历史, with almost everything else
+    happening inline on the home page.
+
+    The professional sidebar still exists, untouched, one click away in
+    base.html. -#}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body class="simple-mode">
+{% include "_icons.html" %}
+
+<div class="simple-shell">
+  <header class="simple-topbar">
+    <a class="simple-brand" href="/">
+      <span class="brand-mark" aria-hidden="true">AI</span>
+      <span class="simple-brand-name">AIOS</span>
+    </a>
+
+    <nav class="simple-nav" aria-label="主导航">
+      <a href="/" {% if nav == 'home' %}aria-current="page"{% endif %}>首页</a>
+      <a href="/simple/history" {% if nav == 'history' %}aria-current="page"{% endif %}>历史</a>
+    </nav>
+
+    {% include "partials/mode_switch.html" %}
+  </header>
+
+  <main class="simple-main {% block content_class %}{% endblock %}">
+    {% if flash %}
+      <div class="flash flash-{{ flash_level }}" role="status">
+        {{ ui.icon(
+             'check' if flash_level == 'ok'
+             else ('alert' if flash_level in ('warn', 'error') else 'info'),
+             'icon icon-sm') }}
+        <span>{{ flash }}</span>
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="simple-footer">
+    所有数据保存在本机 · 情报判断不等同于事实，关键数字请回溯原始来源核验
+  </footer>
+</div>
+</body>
+</html>

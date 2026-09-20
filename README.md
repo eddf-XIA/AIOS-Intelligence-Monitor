@@ -12,11 +12,22 @@
 什么变化、哪个数字改变了、哪些来源证明了这个变化、模型当时做出了什么判断、今天和昨天
 究竟有什么新增。
 
+从 v2.2 起有**两种使用方式**，共用同一个数据库：
+
+| 模式 | 给谁用 | 工作方式 |
+|---|---|---|
+| **简易版** | 普通用户（默认） | 在一个页面上完成全部流程：选 AI → 说明想研究什么 → 开始研究 → 读报告 |
+| **本地专业版** | 进阶用户 | 保留 v2.1 的全部界面：模块 / 主题 / 检索式 / RSS / GDELT / 网络模式 / 数据源健康 / 代理 / 诊断 |
+
+右上角的分段控件随时切换，切换只写一行设置，不改动任何监测配置、事件、报告或凭据。
+
 ---
 
 ## 目录
 
 - [它能做什么](#它能做什么)
+- [简易版与本地专业版](#简易版与本地专业版)
+- [研究引擎与 Research Agent](#研究引擎与-research-agent)
 - [安装](#安装)
 - [AI 模型接入](#ai-模型接入)
 - [Windows 自动启动](#windows-自动启动)
@@ -41,6 +52,9 @@
 | 能力 | 说明 |
 |---|---|
 | 本地 Web UI | FastAPI + Jinja2 + HTMX，不需要 Node.js / Docker / MySQL |
+| 双模式 | 简易版一页完成研究；本地专业版保留全部 v2.1 控制项 |
+| 研究主题 | 一句话描述 → AI 整理成研究提纲 → 保存复用 → 用一句话调整（主题 ID 不变） |
+| Research Agent | 供应商无关的研究接口；能力不足的服务不会被当作可联网研究的 Agent |
 | 可编辑监测配置 | 模块 / Topic / 检索式全部存在数据库，网页可改，改完下次监测立即生效 |
 | 多模型可替换 | DeepSeek / 通义千问 / 智谱 GLM / Kimi / 豆包 / MiniMax / 混元 / 千帆 / 硅基流动 + OpenAI / Claude / Gemini / Ollama |
 | 任务级模型分配 | 便宜模型做筛选与归并，强模型做综合研判，全部在设置页配置 |
@@ -53,6 +67,165 @@
 | 定时执行 | APScheduler 每天定时运行，重启后自动恢复 |
 | 运行进度 | 阶段式展示（采集 / 抓取 / 分析 / 归并 / 生成），不伪造百分比 |
 | HTML 日报 + JSON 审计 | 沿用原有卡片式版式，同时保留机器可读快照 |
+
+---
+
+## 简易版与本地专业版
+
+### 简易版（默认）
+
+一个页面上完成全部流程，几乎不暴露技术概念：
+
+```
+研究引擎      [ DeepSeek ▼ ] [ 本地检索研究 ▼ ]  ● 可用   [管理]
+
+研究主题      最近使用： [全球智能终端] [具身智能] [+ 新主题]
+
+              你想研究什么？
+              ┌────────────────────────────────────────────┐
+              │ 关注全球智能终端操作系统和 AI 基础设施最近  │
+              │ 的重要进展，尤其关注鸿蒙、AI PC、具身智能。 │
+              └────────────────────────────────────────────┘
+              [ AI 完善主题 ]
+
+              ↓ AI 整理出的研究提纲
+
+              智能终端OS与AI基础设施进展
+              中国 + 全球 · 最近72小时
+              技术进展 · 产品发布 · 开源项目 · 商业落地
+              关注：鸿蒙 / Android / AI PC / 具身智能 / 太空智算
+              排除：招聘 · 培训 · 促销 · 重复转载
+              [修改] [保存主题]                    [开始研究]
+
+              ↓ 页面就地变成运行状态，不跳转
+
+              研究进行中 · 1 分 24 秒
+              ✓ 理解研究目标
+              ✓ 搜索公开信息
+              ● 阅读与交叉验证
+              ○ 整理关键事件
+              ○ 生成报告
+              已研究 17 个来源 · 发现 6 个候选事件
+
+              ↓ 完成
+
+              研究完成                          用时 2 分 41 秒
+              8 项重要动态
+              新增 5 · 更新 3 · 26 个来源
+              今日焦点 ...
+              [ 查看完整报告 ]
+              [查看变化] [来源证据] [历史记录]
+```
+
+简易版**不会**出现这些词：GDELT、Google News、RSS、检索式、Preferred Source、
+Collector、Circuit Breaker、代理、网络模式、RawArticle、ObservationSource、
+token 数、数据库术语。它们都在本地专业版里，一个都没删。
+
+用户只需要理解四件事：我用什么 AI、我想研究什么、今天发生了什么、相比以前有什么变化。
+
+### 本地专业版
+
+v2.1 的界面**完全保留**：概览 / 监测配置 / 情报事件 / 报告 / 对比 / 运行记录 / 设置，
+以及模块、主题、检索式、优先来源、排除词、RSS 订阅源、GDELT、Google News、
+网络模式、代理、数据源健康、采集诊断、按任务分配模型、经典采集运行。
+
+两种模式**共用一个数据库**。简易版产出的事件和报告在专业版里是一等公民（出现在
+情报事件 / 报告 / 运行记录 / 对比里）；专业版的经典监测报告也会出现在简易版的历史里。
+
+---
+
+## 研究引擎与 Research Agent
+
+简易版把「服务商 + 模型 + Agent + 凭据」合并成一个用户概念：**研究引擎**。
+
+### 一条硬规则：对话接口不等于研究能力
+
+任何大模型都会很乐意回答「最近人形机器人有什么重要进展」——用训练数据编出日期、
+编出来源。把这种输出当成研究结果是这个产品能犯的最严重的错误。
+
+所以每个 Agent 都要声明能力（`aios/services/research/catalog.py`），
+**只有真正能联网检索并给出可解析 URL 的 Agent 才会被列为研究 Agent**：
+
+| Agent | 供应商 | 说明 |
+|---|---|---|
+| 本地检索研究 | 任意 | 由本机采集器（RSS / GDELT / 新闻检索）取来源，你配置的模型负责阅读、交叉验证与撰写 |
+| 智谱 GLM 联网检索 | zhipu | 平台 `web_search` 工具 |
+| 通义千问联网检索 | qwen | 百炼 `enable_search` |
+| Kimi 联网检索 | moonshot | 内置 `$web_search` |
+| OpenAI 联网研究 | openai | Responses API `web_search` 工具，多轮检索 |
+| Claude 联网研究 | anthropic | Messages API `web_search` 服务端工具，多轮检索 |
+| Gemini 联网研究 | gemini | Google Search grounding |
+
+DeepSeek、豆包、MiniMax、混元、千帆、硅基流动、OpenRouter、Ollama、自建端点的
+对话接口**不能联网**，因此不会被标成「Deep Research」。界面会直接说明原因，并建议
+改用「本地检索研究」——由本机采集真实来源，再由这些模型做它们确实擅长的分析。
+
+这正是大多数用户的实际路径：已经配好了 DeepSeek，研究照样能做，而且来源是真的。
+
+### Agent 必须返回结构化数据，不是 Markdown
+
+Agent 返回一大段 Markdown 会毁掉 AIOS 的历史追踪能力：今天好看，明天没有任何东西
+可以对比。所以 Agent 必须返回校验过的 `ResearchResult`（`aios/schemas/research.py`）：
+
+```
+coverage    complete / partial / failed，以及 limitations、sources_examined
+report      给人看的：title / focus / sections / market_snapshot / trend_analysis
+events      给系统看的：organization / product_or_project / event_type / event_date / entities
+sources     给证据用的：source_id / publisher / url / published_at
+watch_next  下一步值得盯的事
+```
+
+用户**永远看不到这个 JSON**。它只是 Agent 与流水线之间的实现细节。
+
+### 研究 Agent 是眼睛，AIOS 仍然是记忆
+
+```
+Research Agent
+      ↓
+结构化 ResearchResult
+      ↓
+来源落库为 RawArticle（证据）
+      ↓
+事件归并（身份特征 + 可选 LLM 判断）
+      ↓
+IntelligenceEvent / EventObservation / ObservationSource
+      ↓
+NEW / UPDATED
+      ↓
+Report / ReportSection / ReportItem
+      ↓
+历史 / 对比 / 变化
+```
+
+Agent 改变的是**信息怎么被发现**，不是信息怎么被记住。事件、观测、证据、差分、
+报告全部走 v2.1 原有的那一套表，所以 `/compare`、时间线、差分引擎对两种模式的行为
+完全一致。
+
+### 事件身份：同一件事被换着说法描述
+
+研究 Agent 不记得昨天的措辞，同一件事每天都换一种说法：
+
+```
+第 1 天   Figure 发布 Helix 2
+第 2 天   Figure 推出新一代人形机器人智能系统 Helix 2
+第 3 天   Helix 2 获得新的工厂部署
+```
+
+只比标题会得到三条互不相关的时间线。所以身份是一个**指纹**
+（`aios/services/event_identity.py`），按可信程度排序：
+
+1. **共享来源 URL** — 引用同一篇文档就是同一件事。唯一强到可以单独合并的信号。
+2. **产品/项目名** — 措辞改变时最稳定（上面三句里 `Helix 2` 一直在）。
+3. **主体机构** — 必要但远远不够（华为一天发布很多不相关的东西），只能作为辅助。
+4. **事件类型** — 区分「发布 Helix 2」和「Helix 2 工厂部署」：同一产品，确实是两件事。
+   它既用来促成合并，也用来**阻止**错误合并。
+5. **事件日期接近度**。
+6. **标题/摘要词汇重合度**（CJK 感知，沿用原有分词）。
+
+偏向不变：**不确定时一律 NEW_EVENT**。拆错的事件看得见、能恢复；合错的事件会静默
+污染时间线。
+
+经典流水线的候选**不填任何身份字段**，因此打分完全等同于 v2.1 的词汇重合度行为。
 
 ---
 
@@ -277,7 +450,7 @@ python -m aios
 启动后会看到：
 
 ```
-  AIOS Intelligence Monitor v2.1.0
+  AIOS Intelligence Monitor v2.2.0
   Starting server...
 
   Database:   ...\data\aios.db
@@ -525,10 +698,11 @@ aios/
 ├── logging_setup.py      日志 + API Key 脱敏过滤器
 ├── web.py                模板环境、过滤器、flash
 │
-├── models/               SQLAlchemy ORM（19 张表）
+├── models/               SQLAlchemy ORM（23 张表）
 │   ├── monitoring.py     MonitorModule / Topic / SearchQuery / PreferredSource / ExcludedKeyword
 │   ├── providers.py      LLMProviderConfig / TaskModelRoute
 │   ├── intelligence.py   RawArticle / IntelligenceEvent / EventObservation / ObservationSource
+│   ├── research.py       ResearchTopic / ResearchTopicRevision（简易版的研究主题）
 │   ├── reports.py        Report / ReportSection / ReportItem
 │   ├── runs.py           MonitoringRun / ModuleRun / RunLog / LLMUsage
 │   └── settings.py       AppSetting
@@ -541,6 +715,18 @@ aios/
 │   ├── article_extractor.py      正文抓取 + URL 规范化 + 哈希
 │   ├── deduplicator.py           URL / 内容 / 标题三层去重
 │   ├── source_scoring.py         来源可信度（纯规则，模型不参与打分）
+│   ├── research/                 Research Agent 层（供应商无关）
+│   │   ├── base.py               ResearchService 抽象、能力声明、研究阶段
+│   │   ├── catalog.py            有哪些 Agent，以及哪些真的能联网（产品的诚实层）
+│   │   ├── web_agents.py         OpenAI / Anthropic / Gemini / 各家搜索开关适配器
+│   │   ├── local_agent.py        本机采集 + 配置的模型分析
+│   │   ├── prompts.py            共用的研究指令（质量不依赖于选了哪家）
+│   │   └── registry.py           把设置解析成能跑的 Agent
+│   ├── research_pipeline.py      Agent 结果 → 事件 / 观测 / 证据 / 报告
+│   ├── research_topic_service.py 一句话 → 研究提纲；一句话 → 修改提纲
+│   ├── event_identity.py         事件指纹：URL / 产品 / 主体 / 类型 / 日期
+│   ├── mode_service.py           简易版 / 本地专业版偏好
+│   ├── simple_views.py           把情报核心翻译成简易版的说法
 │   ├── llm/                      可替换的模型层
 │   │   ├── base.py               LLMProvider 抽象、LLMResponse、错误体系、JSON 解析
 │   │   ├── presets.py            服务商预设（国内优先）
@@ -607,8 +793,14 @@ HTML、对比页面中**始终分开**。Prompt 强制要求：
 python -m pytest tests/ -q
 ```
 
-当前 **206 个测试全部通过**，不需要真实 DeepSeek API 或外网——
-所有 LLM 调用和网络请求都被 mock。
+当前 **847 个测试全部通过**（v2.1 基线 532 + v2.2 新增 315），默认不需要真实 DeepSeek API
+或外网——所有 LLM 调用和网络请求都被 mock。
+
+另有 1 个标记为 `live` 的真实 API 验证测试，默认不运行，需要显式开启：
+
+```bash
+DEEPSEEK_API_KEY=sk-... python -m pytest -m live
+```
 
 覆盖范围：
 
@@ -625,10 +817,37 @@ python -m pytest tests/ -q
 | `test_importer.py` | 旧版 JSON 导入 |
 | `test_llm_providers.py` | 预设、三种适配器、JSON 修复重试、任务路由、凭据隔离、**全盘扫描确认无明文 Key** |
 | `test_startup_service.py` | 启动命令生成、两种机制的启用/关闭、重复启动防护、`--no-browser` |
+| `test_mode_switch.py` | 模式偏好持久化、两套外壳、切换不动任何数据（逐列对比设置表）、开放重定向防护 |
+| `test_research_engine.py` | 内联首次配置、凭据只进凭据管理器、**全盘扫描确认无明文 Key**、能力诚实性（按**接入方式**而非厂商判定研究能力） |
+| `test_research_topics.py` | 一句话建主题、预览不落库、历史主题恢复、**自然语言修改保持同一个主题 ID**、旧报告仍然关联 |
+| `test_research_result.py` | ResearchResult 校验与修复、来源裁剪、**complete / partial / failed 三态互不混淆** |
+| `test_research_pipeline.py` | Agent 事件 → IntelligenceEvent、NEW / UPDATED、**换措辞的同一件事被正确归并**、同产品不同里程碑仍是新事件、失败不变成"没有新闻" |
+| `test_local_research_agent.py` | 本地检索研究：提纲 → 检索式、证据用真实抓到的文档、不可达来源不谎报"无新闻" |
+| `test_simple_home.py` | 一页完成研究、HTMX 实时轮询、终态停止轮询、结果卡、返回主页恢复上下文、**技术词汇不泄漏** |
+| `test_research_scheduler.py` | 每天自动研究装出真实 job、不暴露 cron、与经典定时任务共存 |
+| `test_professional_regression.py` | 本地专业版所有页面与写操作仍然工作、v2.1 报告/事件向后兼容、两种引擎正确分派 |
+| `test_remote_research_isolation.py` | 远程研究**不触碰**任何本地采集链路（Google News / GDELT / RSS / CollectionPlanner / ArticleExtractor 全部设为断路器）、证据全部来自 Agent 引用、Event / Observation / NEW / UPDATED 仍然成立、仅对话接口不可被选为远程研究 Agent |
+| `test_deepseek_research_agent.py` | DeepSeek 专用远程适配器：走 `/anthropic` 而非对话接口、服务端联网检索、来源取自 `web_search_tool_result`、未检索则报错而不是交报告 |
 
 ---
 
 ## 已知限制
+
+0. **v2.2 的新限制。**
+   - 已完成真实 API 端到端验证的远程适配器：**DeepSeek**（Anthropic 兼容接口的服务端
+     联网检索）。「本地检索研究」也在本机做过真实端到端验证。
+     OpenAI / Anthropic / Gemini / 智谱 / 通义 / Kimi 的联网适配器按各家公开文档实现
+     并有单元测试，但尚未用真实付费账号逐一跑通。
+   - 远程 Agent 达到自身检索/工具预算上限时，覆盖度会如实降级为 partial。
+   - Agent 给出的引用不总是能与原始搜索结果列表逐条对应；AIOS 记录 Agent 提供的
+     证据，不会在本机重新抓取来验证（那样就回到本地采集了）。
+   - 「本地检索研究」的检索广度取决于本机采集器（RSS / GDELT / 新闻检索），
+     不是开放式爬取，因此不声明 `supports_multi_step`。
+   - 研究覆盖度是**整次研究**一个结论，不是每个领域一个结论：Agent 只报一次
+     coverage，按领域编出一个状态是不诚实的。
+   - 简易版的自动研究是「每天一次、HH:MM」。更复杂的排程请用本地专业版。
+   - 研究报告的 HTML 导出复用经典版式，尚未针对 Agent 报告的 `market_snapshot`
+     做专门排版。
 
 1. **事件归并依赖 LLM 判断。** 规则先把候选缩小到同模块/同主题、近期活跃且有词汇重合的
    少数事件，再由 DeepSeek 决定 MATCH 还是 NEW_EVENT。置信度低于 0.6 的匹配会被拒绝——

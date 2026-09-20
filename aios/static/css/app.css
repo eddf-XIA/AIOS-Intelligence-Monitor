@@ -1002,3 +1002,581 @@ details.disclosure[open] > summary .icon { transform: rotate(90deg); }
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   24. v2.2 — mode switch and 简易版 shell
+
+   Simple mode should feel *calmer* than Professional mode, not merely smaller:
+   fewer surfaces, more whitespace, one obvious primary action per screen.
+   Everything below reuses the tokens in section 1; no new colours exist.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   24.1 Mode switch — compact segmented control, top-right, ~30px tall
+   -------------------------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-3) var(--space-8) 0;
+  max-width: var(--content-max-wide);
+  width: 100%;
+}
+
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex: none;
+}
+
+.mode-switch-form { display: contents; }
+
+.mode-switch-option {
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  height: 24px;
+  padding: 0 11px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.mode-switch-option:hover { background: var(--surface); color: var(--text); }
+.mode-switch-option.is-active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  cursor: default;
+}
+
+/* --------------------------------------------------------------------------
+   24.2 Simple shell
+   -------------------------------------------------------------------------- */
+
+.simple-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.simple-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.simple-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--text); }
+.simple-brand:hover { color: var(--text); }
+.simple-brand-name { font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+
+.simple-nav { display: flex; align-items: center; gap: 2px; }
+.simple-nav a {
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.simple-nav a:hover { background: var(--surface-muted); color: var(--text); }
+.simple-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+.simple-topbar .mode-switch { margin-left: auto; }
+
+.simple-main {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-10);
+}
+.simple-main-wide { max-width: 940px; }
+
+.simple-footer {
+  padding: var(--space-5) var(--space-6) var(--space-8);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
+/* --------------------------------------------------------------------------
+   24.3 Simple page header and blocks
+   -------------------------------------------------------------------------- */
+
+.simple-header { margin-bottom: var(--space-8); }
+.simple-title { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+.simple-subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 5px; }
+
+/* A block is a labelled region, not a card. Simple mode uses hairlines and
+   whitespace to separate things; a grid of dashboard cards is what
+   Professional mode is for. */
+.simple-block { margin-bottom: var(--space-8); }
+.simple-block:last-child { margin-bottom: 0; }
+.simple-block-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+.simple-block-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.simple-block-plain { background: none; border: none; box-shadow: none; padding: 0; }
+
+/* --------------------------------------------------------------------------
+   24.4 研究引擎
+   -------------------------------------------------------------------------- */
+
+.engine-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.engine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.engine-chip-sub { color: var(--text-muted); font-weight: 400; font-size: 12.5px; }
+.engine-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.engine-state-ok { color: var(--success-text); }
+.engine-state-bad { color: var(--error-text); }
+.engine-row .spacer { margin-left: auto; }
+
+.engine-empty { text-align: left; }
+.engine-empty-title { font-size: 14.5px; font-weight: 600; }
+.engine-empty-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+  line-height: 1.7;
+}
+.engine-empty .btn { margin-top: var(--space-4); }
+
+/* --------------------------------------------------------------------------
+   24.5 研究主题 — recent chips and the natural-language input
+   -------------------------------------------------------------------------- */
+
+.topic-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.topic-chips-label { font-size: 12.5px; color: var(--text-muted); margin-bottom: var(--space-2); }
+
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease), border-color var(--dur-micro) var(--ease);
+}
+.topic-chip:hover { background: var(--surface-muted); color: var(--text); }
+.topic-chip.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+.topic-chip-new { border-style: dashed; color: var(--text-secondary); }
+.topic-chip-meta { font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
+.topic-chip-form { display: contents; }
+
+.topic-ask-label { font-size: 15px; font-weight: 600; margin-bottom: var(--space-3); }
+.topic-ask textarea { min-height: 96px; font-size: 14px; line-height: 1.7; }
+.topic-ask-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+.topic-ask-actions .spacer { margin-left: auto; }
+
+/* --------------------------------------------------------------------------
+   24.6 Brief preview — compact, readable, not a giant form
+   -------------------------------------------------------------------------- */
+
+.brief {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.brief-name { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.brief-scope { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
+.brief-focus { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+.brief-goal { font-size: 13.5px; color: var(--text-secondary); margin-top: var(--space-3); line-height: 1.75; }
+
+.brief-line { display: flex; gap: var(--space-2); margin-top: var(--space-3); font-size: 13px; flex-wrap: wrap; }
+.brief-line-label { color: var(--text-muted); flex: none; }
+.brief-line-value { color: var(--text); min-width: 0; }
+
+.brief-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.brief-actions .spacer { margin-left: auto; }
+.brief-note {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  line-height: 1.7;
+}
+
+/* --------------------------------------------------------------------------
+   24.7 The one primary action
+   -------------------------------------------------------------------------- */
+
+.simple-run-action { margin: var(--space-8) 0; }
+.simple-run-action .btn { width: 100%; height: 48px; font-size: 15px; font-weight: 600; }
+.simple-run-hint { font-size: 12.5px; color: var(--text-muted); margin-top: var(--space-2); text-align: center; }
+
+/* --------------------------------------------------------------------------
+   24.8 Running state — human stages, real elapsed time, no fake percentage
+   -------------------------------------------------------------------------- */
+
+.run-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.run-panel-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.run-panel-topic { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.run-panel-state { font-size: 13.5px; color: var(--text-secondary); }
+.run-panel-head .spacer { margin-left: auto; }
+
+.run-stages { display: flex; flex-direction: column; gap: 0; margin-top: var(--space-4); }
+.run-stage {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+.run-stage-mark {
+  width: 18px; height: 18px; flex: none;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+.run-stage.is-done { color: var(--text-secondary); }
+.run-stage.is-done .run-stage-mark { background: var(--success-bg); color: var(--success-text); }
+.run-stage.is-active { color: var(--text); font-weight: 500; }
+.run-stage.is-active .run-stage-mark { background: var(--info-bg); color: var(--info-text); }
+
+.run-counts {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.run-counts b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------------------
+   24.9 Result card and result menu
+   -------------------------------------------------------------------------- */
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+.result-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.result-state { font-size: 13.5px; color: var(--success-text); font-weight: 500; }
+.result-state-warn { color: var(--warning-text); }
+.result-state-error { color: var(--error-text); }
+.result-head .spacer { margin-left: auto; }
+.result-elapsed { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.result-headline {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: var(--space-4);
+  font-variant-numeric: tabular-nums;
+}
+.result-headline small { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+.result-counts { font-size: 13.5px; color: var(--text-secondary); margin-top: 6px; }
+
+.result-focus { margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.result-focus-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
+.result-focus-title { font-size: 15.5px; font-weight: 600; margin-top: 6px; }
+.result-focus-body { font-size: 13.5px; color: var(--text-secondary); line-height: 1.8; margin-top: 6px; }
+
+.result-menu { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-5); }
+.result-menu-primary { width: 100%; }
+.result-menu-primary .btn { width: 100%; height: 42px; }
+
+/* --------------------------------------------------------------------------
+   24.10 Recent reports list
+   -------------------------------------------------------------------------- */
+
+.report-list { display: flex; flex-direction: column; }
+.report-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+}
+.report-list-row:first-child { border-top: none; }
+.report-list-row:hover { color: var(--text); }
+.report-list-date { font-size: 13.5px; font-weight: 500; flex: none; min-width: 84px; }
+.report-list-main { min-width: 0; flex: 1; }
+.report-list-title { font-size: 13.5px; }
+.report-list-meta { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.report-list-side { flex: none; color: var(--text-muted); }
+
+/* --------------------------------------------------------------------------
+   24.11 Changes / sources / history detail pages
+   -------------------------------------------------------------------------- */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-5);
+}
+.back-link:hover { color: var(--text); }
+
+.change-summary {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+}
+.change-summary-item { font-size: 13px; color: var(--text-secondary); }
+.change-summary-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.change-group { margin-bottom: var(--space-6); }
+.change-group-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: var(--space-3); }
+.change-entry { padding: var(--space-4) 0; border-top: 1px solid var(--border); }
+.change-entry:first-child { border-top: none; }
+.change-entry-title { font-size: 14.5px; font-weight: 600; }
+.change-entry-title a { color: var(--text); }
+.change-entry-title a:hover { color: var(--accent); }
+.change-entry-body { font-size: 13px; color: var(--text-secondary); margin-top: 5px; line-height: 1.75; }
+.change-timeline { margin-top: var(--space-3); font-size: 13px; }
+.change-timeline-row { display: flex; gap: var(--space-3); padding: 3px 0; }
+.change-timeline-date { color: var(--text-muted); flex: none; min-width: 62px; }
+.change-timeline-text { color: var(--text-secondary); min-width: 0; }
+
+.source-group { padding: var(--space-4) 0; border-top: 1px solid var(--border); }
+.source-group:first-child { border-top: none; }
+.source-group-title { font-size: 14px; font-weight: 600; }
+.source-group-links { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+
+.publisher-cloud { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* --------------------------------------------------------------------------
+   24.12 Inline setup drawer
+   -------------------------------------------------------------------------- */
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  z-index: 60;
+  animation: fade-in var(--dur-panel) var(--ease);
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.drawer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-menu);
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: drawer-in var(--dur-panel) var(--ease);
+}
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+.drawer-title { font-size: 16px; font-weight: 600; }
+.drawer-head .spacer { margin-left: auto; }
+.drawer-body { padding: 0 var(--space-5) var(--space-5); }
+.drawer-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+.drawer-foot .spacer { margin-left: auto; }
+
+.test-result { font-size: 13px; margin-top: var(--space-3); line-height: 1.7; }
+.test-result-ok { color: var(--success-text); }
+.test-result-bad { color: var(--error-text); }
+
+/* --------------------------------------------------------------------------
+   24.13 Failure state — never an empty "no news" report
+   -------------------------------------------------------------------------- */
+
+.failure-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--error-dot);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+.failure-title { font-size: 16px; font-weight: 600; }
+.failure-reason-label { font-size: 12.5px; color: var(--text-muted); margin-top: var(--space-4); }
+.failure-reason { font-size: 13.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.75; }
+.failure-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-5); }
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.7;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  margin-bottom: var(--space-4);
+}
+.notice .icon { margin-top: 1px; flex: none; }
+.notice-info { background: var(--info-bg); color: var(--info-text); }
+
+/* --------------------------------------------------------------------------
+   24.14 Advanced disclosure — where technical detail is allowed to live
+   -------------------------------------------------------------------------- */
+
+.advanced { margin-top: var(--space-6); }
+.advanced > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+}
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary:hover { color: var(--text-secondary); }
+.advanced-body {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  animation: reveal var(--dur-panel) var(--ease);
+}
+
+/* --------------------------------------------------------------------------
+   24.15 Responsive — Simple mode must stay usable narrow
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .topbar { padding: var(--space-3) var(--space-4) 0; }
+}
+
+@media (max-width: 720px) {
+  .simple-topbar { padding: var(--space-3) var(--space-4); gap: var(--space-3); flex-wrap: wrap; }
+  .simple-main { padding: var(--space-5) var(--space-4) var(--space-8); }
+  .simple-title { font-size: 22px; }
+  .mode-switch-option { padding: 0 9px; font-size: 12px; }
+
+  /* The textarea and the result card stack rather than squeeze. */
+  .engine-row { flex-direction: column; align-items: stretch; }
+  .engine-row .spacer { display: none; }
+  .brief-actions { flex-direction: column; align-items: stretch; }
+  .brief-actions .spacer { display: none; }
+  .brief-actions .btn { width: 100%; }
+  .result-menu .btn { width: 100%; }
+  .result-headline { font-size: 26px; }
+  .change-summary { gap: var(--space-4); }
+  .report-list-row { flex-wrap: wrap; gap: var(--space-2); }
+  .report-list-date { min-width: 0; }
+}
+
+@media (max-width: 420px) {
+  .simple-nav a { padding: 6px 9px; }
+}

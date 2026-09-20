@@ -1,0 +1,97 @@
+{% extends "base_simple.html" %}
+{% block title %}修改研究主题 · {{ app_name }}{% endblock %}
+
+{#- The explicit editor, reached only from 修改.
+
+    Still not a "giant form": six fields, all in the user's own vocabulary, no
+    search syntax and no source configuration. Lists are one item per line,
+    which the ``ResearchBrief`` schema accepts directly - so an edited brief
+    goes through exactly the same validation and caps as a generated one. -#}
+
+{% block content %}
+<a class="back-link" href="/">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回主页</a>
+
+<div class="simple-header">
+  <h1 class="simple-title">修改研究主题</h1>
+  <p class="simple-subtitle">
+    {% if topic %}主题 ID 不变，历史报告继续关联到它。{% else %}保存后会成为一个可复用的研究主题。{% endif %}
+  </p>
+</div>
+
+<form method="post" action="{{ action }}">
+  {% if topic %}<input type="hidden" name="topic_id" value="{{ topic.id }}">{% endif %}
+
+  <div class="simple-block-body">
+    <div class="field">
+      <label for="name">主题名称</label>
+      <input type="text" id="name" name="name" value="{{ brief.name }}" required maxlength="200">
+    </div>
+
+    <div class="field">
+      <label for="brief">研究目标</label>
+      <textarea id="brief" name="brief" rows="3"
+                placeholder="想从这个主题得到什么样的情报">{{ brief.brief }}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="scope">研究范围</label>
+      <textarea id="scope" name="scope" rows="3"
+                placeholder="覆盖哪些子领域、技术方向、主要厂商">{{ brief.scope }}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="regions">地域范围</label>
+        <input type="text" id="regions" name="regions" value="{{ brief.regions }}"
+               placeholder="例如 中国 + 全球">
+      </div>
+      <div class="field">
+        <label for="window_hours">时间范围</label>
+        <select id="window_hours" name="window_hours">
+          {% for hours, label in window_choices %}
+            <option value="{{ hours }}" {% if hours == brief.window_hours %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="focus_areas">重点关注</label>
+      <textarea id="focus_areas" name="focus_areas" rows="3"
+                placeholder="一行一个，例如&#10;技术进展&#10;产品发布&#10;商业落地">{{ brief.focus_areas|join('\n') }}</textarea>
+      <div class="field-hint">一行一个。</div>
+    </div>
+
+    <div class="field">
+      <label for="keywords">重点对象</label>
+      <textarea id="keywords" name="keywords" rows="3"
+                placeholder="一行一个，例如&#10;HarmonyOS&#10;AI PC&#10;具身智能">{{ brief.keywords|join('\n') }}</textarea>
+      <div class="field-hint">一行一个：值得重点盯的产品、技术或厂商。</div>
+    </div>
+
+    <div class="field">
+      <label for="exclusions">明确排除</label>
+      <textarea id="exclusions" name="exclusions" rows="3"
+                placeholder="一行一个，例如&#10;招聘&#10;培训&#10;重复转载">{{ brief.exclusions|join('\n') }}</textarea>
+      <div class="field-hint">一行一个。</div>
+    </div>
+
+    <div class="field">
+      <label for="depth">研究深度</label>
+      <select id="depth" name="depth">
+        <option value="standard" {% if brief.depth == 'standard' %}selected{% endif %}>标准 · 聚焦最重要的动态</option>
+        <option value="deep" {% if brief.depth == 'deep' %}selected{% endif %}>深入 · 多轮检索，覆盖更广</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="brief-actions">
+    <a class="btn" href="/">取消</a>
+    <div class="spacer"></div>
+    <button type="submit" name="action" value="save" class="btn btn-primary">
+      {% if topic %}保存修改{% else %}保存主题{% endif %}
+    </button>
+    <button type="submit" name="action" value="run" class="btn">保存并开始研究</button>
+  </div>
+</form>
+{% endblock %}

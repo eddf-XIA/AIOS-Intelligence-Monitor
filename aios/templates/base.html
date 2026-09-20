@@ -56,6 +56,14 @@
   </aside>
 
   <div class="main">
+    {#- The mode switch rides in a slim strip at the top-right edge of the
+        shell rather than in a card or a toolbar of its own: it is ~34px tall,
+        carries no other controls, and stays out of the way of the page it sits
+        above. -#}
+    <div class="topbar">
+      {% include "partials/mode_switch.html" %}
+    </div>
+
     <main class="content {% block content_class %}{% endblock %}">
       {% if flash %}
         <div class="flash flash-{{ flash_level }}" role="status">

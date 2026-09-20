@@ -1,0 +1,19 @@
+{#- The brief carried through a form as hidden fields.
+
+    Why hidden fields rather than a hidden JSON blob or a server-side draft
+    row: the values that come back are re-validated through the same
+    :class:`ResearchBrief` schema as the generated ones, so a user who edits
+    the brief gets exactly the same caps and cleaning. A JSON blob would
+    either be trusted blindly or have to be parsed twice.
+
+    Lists are newline-separated because that is what the edit form posts, and
+    ``_list_field`` in the schema accepts either form. -#}
+<input type="hidden" name="name" value="{{ brief.name }}">
+<input type="hidden" name="brief" value="{{ brief.brief }}">
+<input type="hidden" name="scope" value="{{ brief.scope }}">
+<input type="hidden" name="focus_areas" value="{{ brief.focus_areas|join('\n') }}">
+<input type="hidden" name="exclusions" value="{{ brief.exclusions|join('\n') }}">
+<input type="hidden" name="keywords" value="{{ brief.keywords|join('\n') }}">
+<input type="hidden" name="regions" value="{{ brief.regions }}">
+<input type="hidden" name="window_hours" value="{{ brief.window_hours }}">
+<input type="hidden" name="depth" value="{{ brief.depth }}">

@@ -46,13 +46,23 @@ def report_list(request: Request, q: str = "", session: Session = Depends(get_db
 
 @router.get("/{report_id}")
 def report_detail(
-    report_id: int, request: Request, view: str = "report", session: Session = Depends(get_db)
+    report_id: int,
+    request: Request,
+    view: str = "report",
+    session: Session = Depends(get_db),
 ):
-    """Report / evidence / event views over the same stored data."""
+    """Report / evidence / event views over the same stored data.
+
+    ``?from=simple`` makes the page a proper detour rather than a dead end: it
+    swaps the breadcrumb for a 返回主页 link back to the Simple home, where the
+    user's topic and result are still in place. The report itself is identical
+    in both modes - one report system, two ways in.
+    """
     report = reports_repo.get_report(session, report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
 
+    from_simple = request.query_params.get("from", "") == "simple"
     previous = reports_repo.previous_report(session, report)
     return render(
         request,
@@ -64,6 +74,8 @@ def report_detail(
             "previous": previous,
             "usage": runs_repo.usage_summary(session, report.run_id) if report.run_id else {},
             "coverage_notice": report_generator.coverage_notice(report),
+            "from_simple": from_simple,
+            "simple_query": "?from=simple" if from_simple else "",
         },
     )
 

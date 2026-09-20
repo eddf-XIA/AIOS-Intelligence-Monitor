@@ -12,6 +12,11 @@ from .base import Base, UTCDateTime
 from ..timeutil import utcnow
 
 
+#: How a run acquired its information. Stored on :attr:`MonitoringRun.engine`.
+RUN_ENGINE_CLASSIC = "classic"
+RUN_ENGINE_AGENT = "agent"
+
+
 class RunStatus:
     """Allowed values for :attr:`MonitoringRun.status`."""
 
@@ -60,6 +65,20 @@ class MonitoringRun(Base):
 
     report_date: Mapped[dt.date] = mapped_column(Date, index=True)
 
+    #: Which acquisition strategy produced this run: ``classic`` (the v2.1
+    #: collection engine) or ``agent`` (a Research Agent). Defaulted so every
+    #: run recorded before v2.2 reads correctly as a Classic run.
+    engine: Mapped[str] = mapped_column(String(16), default=RUN_ENGINE_CLASSIC, index=True)
+    #: Set for Research Agent runs. NULL for Classic runs.
+    research_topic_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("research_topics.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    #: ``complete`` / ``partial`` / ``failed`` as reported by the agent.
+    #: "We looked and found nothing" and "we could not look" must never be
+    #: stored as the same fact.
+    coverage_status: Mapped[str] = mapped_column(String(16), default="")
+    total_sources_examined: Mapped[int] = mapped_column(Integer, default=0)
+
     total_candidates: Mapped[int] = mapped_column(Integer, default=0)
     total_articles: Mapped[int] = mapped_column(Integer, default=0)
     total_events: Mapped[int] = mapped_column(Integer, default=0)
@@ -85,6 +104,10 @@ class MonitoringRun(Base):
     @property
     def is_active(self) -> bool:
         return self.status in RunStatus.ACTIVE
+
+    @property
+    def is_agent_run(self) -> bool:
+        return (self.engine or RUN_ENGINE_CLASSIC) == RUN_ENGINE_AGENT
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<MonitoringRun {self.id} {self.status}>"

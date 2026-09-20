@@ -15,6 +15,7 @@ the evidence, so the Diff engine has numbers to compare across days.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import logging
 from dataclasses import dataclass, field
@@ -117,7 +118,13 @@ class EvidenceItem:
 
 @dataclass
 class CandidateIntelligence:
-    """A model-proposed report item, before event matching."""
+    """A model-proposed report item, before event matching.
+
+    The identity fields below are populated only by the Research Agent path
+    (:mod:`aios.services.research_pipeline`). The Classic pipeline leaves them
+    empty, so :mod:`aios.services.event_identity` finds no extra signals and
+    matching falls back to exactly the lexical behaviour of v2.1.
+    """
 
     tag: str
     title: str
@@ -131,6 +138,25 @@ class CandidateIntelligence:
     topic_id: Optional[int] = None
     topic_name: str = ""
     module_id: Optional[int] = None
+
+    # --- durable event identity (Research Agent runs only) ---------------
+    #: The subject organisation, e.g. 华为 / Figure.
+    organization: str = ""
+    #: The product or project the event is about, e.g. HarmonyOS 6 / Helix 2.
+    #: The single most stable signal across differently-worded descriptions.
+    product_or_project: str = ""
+    #: Milestone kind: product_launch / partnership / deployment / ...
+    event_type: str = ""
+    #: When the event happened, as reported. Distinct from the report date.
+    event_date: Optional[dt.date] = None
+    entities: list[str] = field(default_factory=list)
+    #: Source URLs backing this item. A shared URL is the strongest possible
+    #: evidence that two descriptions are one event.
+    source_urls: list[str] = field(default_factory=list)
+    #: Which report section the agent placed this item in.
+    section: str = ""
+    #: Set when the research topic, rather than a monitoring module, owns it.
+    research_topic_id: Optional[int] = None
 
 
 def build_evidence(articles, max_chars: int = 7000) -> list[EvidenceItem]:

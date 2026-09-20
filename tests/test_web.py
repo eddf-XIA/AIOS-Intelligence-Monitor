@@ -19,13 +19,16 @@ def flash_of(response) -> str:
 class TestPagesRender:
     @pytest.mark.parametrize(
         "path",
-        ["/", "/monitoring", "/reports", "/compare", "/events", "/runs", "/settings", "/healthz"],
+        ["/", "/dashboard", "/monitoring", "/reports", "/compare", "/events", "/runs",
+         "/settings", "/healthz"],
     )
     def test_page_returns_200(self, client, path):
         assert client.get(path).status_code == 200
 
     def test_dashboard_lists_module_count(self, client):
-        assert "8" in client.get("/").text
+        # "/" is mode-aware as of v2.2 and serves 简易版 by default, so the
+        # Overview is asserted against the route that always renders it.
+        assert "8" in client.get("/dashboard").text
 
     def test_monitoring_lists_all_seeded_modules(self, client):
         body = client.get("/monitoring").text
@@ -387,11 +390,15 @@ class TestRunControls:
 
         started = {}
 
-        def fake_start(trigger_type="manual", report_date=None):
+        def fake_start(self, trigger_type="manual", report_date=None, **kwargs):
             started["trigger"] = trigger_type
             return 42
 
-        monkeypatch.setattr(run_manager.manager, "start_run", fake_start)
+        # Patched on the class rather than the ``manager`` instance: monkeypatch
+        # restores an instance attribute by assigning the bound method it
+        # captured, which permanently shadows the class attribute on this
+        # process-wide singleton and defeats later tests that patch it.
+        monkeypatch.setattr(run_manager.RunManager, "start_run", fake_start)
         location = flash_of(client.post("/run", follow_redirects=False))
         assert "/runs/42" in location
         assert started["trigger"] == "manual"

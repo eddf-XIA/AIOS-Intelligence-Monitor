@@ -1,0 +1,81 @@
+{% extends "base_simple.html" %}
+{% block title %}来源证据 · {{ app_name }}{% endblock %}
+{% block content_class %}simple-main-wide{% endblock %}
+
+{#- 来源证据 without a line of JSON.
+
+    Publishers first, because "which outlets is this built on?" is the question
+    a reader actually has. Then per-item attribution, so clicking an
+    intelligence item shows which documents produced it, with the URLs live.
+
+    The underlying chain is unchanged - report item → observation → source →
+    article - it is simply not narrated in those words. -#}
+
+{% block content %}
+<a class="back-link" href="{{ back_url }}">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回</a>
+
+<div class="simple-header">
+  <h1 class="simple-title">来源证据</h1>
+  <p class="simple-subtitle">
+    本期引用 {{ source_count }} 个来源
+    {%- if publishers %} · {{ publishers|length }} 个发布方{% endif %}
+    {%- if topic %} · {{ topic.name }}{% endif %}
+  </p>
+</div>
+
+{% if publishers %}
+  <div class="simple-block">
+    <div class="simple-block-label">发布方</div>
+    <div class="publisher-cloud">
+      {% for publisher in publishers %}
+        <span class="pill">{{ publisher.name }}
+          {%- if publisher.count > 1 %} <span class="muted">{{ publisher.count }}</span>{% endif %}
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% if groups %}
+  <div class="simple-block">
+    <div class="simple-block-label">每条动态的来源</div>
+    <div class="simple-block-body">
+      {% for group in groups %}
+        <div class="source-group">
+          <div class="source-group-title">
+            {% if group.event_id %}
+              <a href="/events/{{ group.event_id }}" style="color:var(--text)">{{ group.title }}</a>
+            {% else %}
+              {{ group.title }}
+            {% endif %}
+          </div>
+          {% if group.sources %}
+            <div class="source-group-links">
+              {% for source in group.sources %}
+                <a class="source-chip" href="{{ source.url }}" target="_blank" rel="noopener">
+                  {{ source.publisher }}
+                  {%- if source.date %} <span class="muted">· {{ source.date }}</span>{% endif %}
+                  {{ ui.icon('external', 'icon icon-sm') }}
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="small muted" style="margin-top:6px">该条目没有关联来源记录。</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div class="empty-state empty-state-compact">
+    <div class="empty-title">本期没有引用来源</div>
+    <div class="empty-desc">这一期没有产出带证据的情报条目。</div>
+  </div>
+{% endif %}
+
+<div class="result-menu" style="margin-top:var(--space-8)">
+  <a class="btn btn-sm" href="/reports/{{ report.id }}?from=simple">查看完整报告</a>
+  <a class="btn btn-sm" href="/simple/changes/{{ report.id }}">查看变化</a>
+  <a class="btn btn-sm" href="/simple/history{% if topic %}?topic_id={{ topic.id }}{% endif %}">历史记录</a>
+</div>
+{% endblock %}

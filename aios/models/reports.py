@@ -32,6 +32,17 @@ class Report(Base):
 
     title: Mapped[str] = mapped_column(Text, default="")
 
+    #: Set when a Research Agent produced this report. NULL for Classic
+    #: reports, including every report written before v2.2.
+    research_topic_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("research_topics.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    #: ``classic`` / ``agent``. Decides which detail chrome 简易版 renders.
+    engine: Mapped[str] = mapped_column(String(16), default="classic", index=True)
+    #: The agent's own coverage verdict, mirrored here so a report can still
+    #: answer "was this complete?" after its run row is gone.
+    coverage_status: Mapped[str] = mapped_column(String(16), default="")
+
     headline_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     trends_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
     metrics_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
@@ -50,6 +61,7 @@ class Report(Base):
     created_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
     run: Mapped[Optional["MonitoringRun"]] = relationship()  # type: ignore[name-defined]
+    research_topic: Mapped[Optional["ResearchTopic"]] = relationship()  # type: ignore[name-defined]
     sections: Mapped[list["ReportSection"]] = relationship(
         back_populates="report",
         cascade="all, delete-orphan",
@@ -59,6 +71,30 @@ class Report(Base):
     @property
     def item_count(self) -> int:
         return sum(len(s.items) for s in self.sections)
+
+    @property
+    def new_count(self) -> int:
+        """Items that were a first appearance when this report was published."""
+        return sum(1 for s in self.sections for i in s.items if i.event_state == "new")
+
+    @property
+    def updated_count(self) -> int:
+        """Items that continued an event already in the timeline."""
+        return sum(1 for s in self.sections for i in s.items if i.event_state == "updated")
+
+    @property
+    def source_count(self) -> int:
+        """Distinct evidence articles cited anywhere in this report."""
+        seen: set[int] = set()
+        for section in self.sections:
+            for item in section.items:
+                observation = item.observation
+                if observation is None:
+                    continue
+                for link in observation.sources:
+                    if link.article_id is not None:
+                        seen.add(link.article_id)
+        return len(seen)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Report {self.id} {self.report_date}>"

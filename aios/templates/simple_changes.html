@@ -1,0 +1,106 @@
+{% extends "base_simple.html" %}
+{% block title %}相比上一期 · {{ app_name }}{% endblock %}
+{% block content_class %}simple-main-wide{% endblock %}
+
+{#- 查看变化 in plain language.
+
+    Backed by exactly the same Event/Observation data the Professional
+    ``/compare`` page reads, through the same diff engine - but expressed as
+    "新增 / 更新 / 持续关注" with a date-stamped timeline, instead of
+    ``EventDiff`` / ``DATA_CHANGE`` / ``observation_id``.
+
+    No raw observations, no change-type enum, no ids. -#}
+
+{% block content %}
+<a class="back-link" href="{{ back_url }}">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回</a>
+
+<div class="simple-header">
+  <h1 class="simple-title">相比上一期</h1>
+  <p class="simple-subtitle">
+    {{ report.report_date|cn_date }}
+    {%- if previous %} 对比 {{ previous.report_date|cn_date }}{% endif %}
+    {%- if topic %} · {{ topic.name }}{% endif %}
+  </p>
+</div>
+
+{% if not previous %}
+  <div class="notice notice-info" role="status">
+    {{ ui.icon('info', 'icon icon-sm') }}
+    <span>这是该主题的第一期报告，暂时没有可以对比的历史。</span>
+  </div>
+{% else %}
+  <div class="change-summary">
+    <div class="change-summary-item">
+      <span class="change-summary-value">{{ counts.new }}</span>新增
+    </div>
+    <div class="change-summary-item">
+      <span class="change-summary-value">{{ counts.updated }}</span>更新
+    </div>
+    <div class="change-summary-item">
+      <span class="change-summary-value">{{ counts.unchanged }}</span>持续关注
+    </div>
+  </div>
+
+  {% for group in groups %}
+    {% if group.entries %}
+      <div class="change-group">
+        <div class="change-group-label">{{ group.label }}</div>
+        {% for entry in group.entries %}
+          <div class="change-entry">
+            <div class="change-entry-title">
+              {% if entry.event_id %}
+                <a href="/events/{{ entry.event_id }}">{{ entry.title }}</a>
+              {% else %}
+                {{ entry.title }}
+              {% endif %}
+            </div>
+            {% if entry.body %}
+              <div class="change-entry-body">{{ entry.body|truncate_text(260) }}</div>
+            {% endif %}
+
+            {#- A dated timeline rather than a diff: "9/13 计划启动 → 9/20
+                合作伙伴扩展至 27 家" is what the user came here to read. -#}
+            {% if entry.timeline %}
+              <div class="change-timeline">
+                {% for point in entry.timeline %}
+                  <div class="change-timeline-row">
+                    <span class="change-timeline-date">{{ point.date }}</span>
+                    <span class="change-timeline-text">{{ point.text|truncate_text(180) }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if entry.metrics %}
+              <div class="change-timeline">
+                {% for metric in entry.metrics %}
+                  <div class="change-timeline-row">
+                    <span class="change-timeline-date">{{ metric.label }}</span>
+                    <span class="change-timeline-text">
+                      {{ metric.old }} → <strong>{{ metric.new }}</strong>
+                      {%- if metric.delta %} <span class="muted">({{ metric.delta }})</span>{% endif %}
+                    </span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  {% if not groups|selectattr('entries')|list %}
+    <div class="empty-state empty-state-compact">
+      <div class="empty-title">没有检出变化</div>
+      <div class="empty-desc">两期之间的情报事件完全一致。</div>
+    </div>
+  {% endif %}
+{% endif %}
+
+<div class="result-menu" style="margin-top:var(--space-8)">
+  <a class="btn btn-sm" href="/reports/{{ report.id }}?from=simple">查看完整报告</a>
+  <a class="btn btn-sm" href="/simple/sources/{{ report.id }}">来源证据</a>
+  <a class="btn btn-sm" href="/simple/history{% if topic %}?topic_id={{ topic.id }}{% endif %}">历史记录</a>
+</div>
+{% endblock %}

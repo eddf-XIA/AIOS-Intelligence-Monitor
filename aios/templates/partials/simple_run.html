@@ -1,0 +1,100 @@
+{% import "_icons.html" as ui with context %}
+{#- The live research region of the Simple home page.
+
+    Three things this fragment must get right:
+
+    1. It replaces *only itself*. The home page around it is never reloaded, so
+       the user keeps their place while research runs for minutes.
+    2. When the run reaches a terminal state the replacement carries no
+       ``hx-trigger``, so polling stops on its own with no client-side timer to
+       clear - the same mechanism the Professional run view uses.
+    3. Stages are human terms. "collector #3 / GDELT retry / query 17/51" is
+       real and useful, and it belongs in the Professional run log, not here.
+
+    The elapsed clock ticks in the browser between polls (see the
+    ``formatElapsed`` note in static/js/app.js) rather than being re-fetched
+    once a second. -#}
+<div id="simple-run"
+     {% if poll %}hx-get="/simple/run/{{ run.id }}" hx-trigger="every 2s" hx-swap="outerHTML"
+     {% else %}data-run-finished="{{ '1' if run.finished_at else '0' }}"{% endif %}>
+
+  {#- Authoritative clock state, refreshed by the same 2s poll as everything
+      else, so the ticking 用时 learns that the run ended. -#}
+  <span id="run-elapsed-sync" hidden aria-hidden="true"
+        data-elapsed-start="{{ run.started_at|isoutc }}"
+        data-elapsed-live="{{ '1' if run.is_active else '0' }}"
+        data-elapsed-final="{{ duration }}"></span>
+
+  {% if run.is_active %}
+    <div class="run-panel">
+      <div class="run-panel-head">
+        <span class="run-panel-topic">{{ topic_name }}</span>
+        <div class="spacer"></div>
+        <span class="run-panel-state">
+          研究进行中 ·
+          <span data-elapsed
+                data-elapsed-live="1"
+                data-elapsed-start="{{ run.started_at|isoutc }}"
+                data-elapsed-final="{{ duration }}">{{ duration }}</span>
+        </span>
+      </div>
+
+      <div class="run-stages">
+        {% for key, label in research_stages %}
+          {% set index = loop.index0 %}
+          {% set done = current_index > index %}
+          {% set active = current_index == index %}
+          <div class="run-stage {{ 'is-done' if done else ('is-active' if active else '') }}">
+            <span class="run-stage-mark">
+              {% if done %}{{ ui.icon('check', 'icon icon-sm') }}
+              {% elif active %}<span class="dot dot-running"></span>
+              {% else %}<span class="dot"></span>{% endif %}
+            </span>
+            {{ label }}
+          </div>
+        {% endfor %}
+      </div>
+
+      {#- Only real counters. Nothing here is estimated, and a count that is
+          still zero is simply not shown rather than displayed as "0 来源",
+          which would read as a finding. -#}
+      {% if run.total_articles or run.total_events %}
+        <div class="run-counts">
+          {% if run.total_articles %}<span>已研究 <b>{{ run.total_articles }}</b> 个来源</span>{% endif %}
+          {% if run.total_events %}<span>发现 <b>{{ run.total_events }}</b> 个候选事件</span>{% endif %}
+        </div>
+      {% endif %}
+
+      <div class="brief-actions" style="margin-top:var(--space-5)">
+        <div class="spacer"></div>
+        <form method="post" action="/simple/run/{{ run.id }}/cancel" class="inline">
+          <button type="submit" class="btn btn-sm">停止</button>
+        </form>
+      </div>
+    </div>
+
+  {% elif failed %}
+    {#- A failed run must never render as an empty report. "We could not look"
+        and "there was nothing to find" are different facts and get different
+        screens. -#}
+    <div class="failure-card">
+      <div class="failure-title">研究未完成</div>
+      <div class="failure-reason-label">原因</div>
+      <div class="failure-reason">{{ failure_reason }}</div>
+      <div class="failure-actions">
+        <form method="post" action="/simple/research" class="inline">
+          {% if topic_id %}<input type="hidden" name="topic_id" value="{{ topic_id }}">{% endif %}
+          <button type="submit" class="btn btn-primary">{{ ui.icon('refresh', 'icon icon-sm') }} 重试</button>
+        </form>
+        <form method="post" action="/mode" class="inline">
+          <input type="hidden" name="mode" value="professional">
+          <input type="hidden" name="next" value="/">
+          <button type="submit" class="btn">切换到本地专业版</button>
+        </form>
+      </div>
+    </div>
+
+  {% else %}
+    {% include "partials/simple_result.html" %}
+  {% endif %}
+</div>

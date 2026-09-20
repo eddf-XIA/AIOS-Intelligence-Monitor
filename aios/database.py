@@ -165,6 +165,23 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("reports", "coverage_json", "JSON"),
     ("report_sections", "coverage_state", "VARCHAR(32) NOT NULL DEFAULT ''"),
     ("module_runs", "collection_status", "VARCHAR(32) NOT NULL DEFAULT ''"),
+    # --- v2.2: Simple mode / Research Agent ---
+    ("reports", "research_topic_id", "INTEGER"),
+    ("reports", "engine", "VARCHAR(16) NOT NULL DEFAULT 'classic'"),
+    ("reports", "coverage_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+    ("monitoring_runs", "engine", "VARCHAR(16) NOT NULL DEFAULT 'classic'"),
+    ("monitoring_runs", "research_topic_id", "INTEGER"),
+    ("monitoring_runs", "coverage_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+    ("monitoring_runs", "total_sources_examined", "INTEGER NOT NULL DEFAULT 0"),
+    ("intelligence_events", "research_topic_id", "INTEGER"),
+    ("intelligence_events", "organization", "VARCHAR(200) NOT NULL DEFAULT ''"),
+    ("intelligence_events", "product_or_project", "VARCHAR(200) NOT NULL DEFAULT ''"),
+    ("intelligence_events", "event_type", "VARCHAR(64) NOT NULL DEFAULT ''"),
+    ("intelligence_events", "entities_json", "JSON"),
+    ("intelligence_events", "canonical_urls_json", "JSON"),
+    ("event_observations", "entities_json", "JSON"),
+    ("event_observations", "event_type", "VARCHAR(64) NOT NULL DEFAULT ''"),
+    ("event_observations", "event_date", "DATE"),
 )
 
 

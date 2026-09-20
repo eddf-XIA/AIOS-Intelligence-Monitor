@@ -1,0 +1,26 @@
+{#- The global 简易版 / 本地专业版 switch.
+
+    Deliberately tiny. It is a compact segmented control embedded in the top
+    edge of the shell, ~30px tall, and it gets no card, no toolbar row and no
+    "choose your mode" screen - the mode is a preference, not a decision the
+    product should keep asking about.
+
+    Rendered as two POST forms rather than links so the preference is a real
+    state change with a real redirect target, and so the switch works with
+    JavaScript disabled. `next` carries the current path, which is what makes
+    the switch available on a report or history page without navigating the
+    user away from what they were reading.
+-#}
+<div class="mode-switch" role="group" aria-label="应用模式">
+  {% for value, label in mode_labels.items() %}
+    {% if value == app_mode %}
+      <span class="mode-switch-option is-active" aria-current="true">{{ label }}</span>
+    {% else %}
+      <form method="post" action="/mode" class="mode-switch-form">
+        <input type="hidden" name="mode" value="{{ value }}">
+        <input type="hidden" name="next" value="{{ request.url.path }}">
+        <button type="submit" class="mode-switch-option">{{ label }}</button>
+      </form>
+    {% endif %}
+  {% endfor %}
+</div>

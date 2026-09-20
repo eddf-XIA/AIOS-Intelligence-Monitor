@@ -1,0 +1,86 @@
+{% extends "base_simple.html" %}
+{% block title %}历史记录 · {{ app_name }}{% endblock %}
+{% block content_class %}simple-main-wide{% endblock %}
+
+{#- History centred on research topics, not on runs.
+
+    A normal user thinks "what has 全球智能终端 looked like over time?", not
+    "show me monitoring run #47". So topics are the spine and each one lists
+    its reports by date with the counts that matter. Run ids, stages and
+    collector diagnostics stay in Professional mode. -#}
+
+{% block content %}
+<a class="back-link" href="/">{{ ui.icon('arrow-left', 'icon icon-sm') }} 返回主页</a>
+
+<div class="simple-header">
+  <h1 class="simple-title">历史记录</h1>
+  <p class="simple-subtitle">按研究主题查看历次报告与变化。</p>
+</div>
+
+{% if topics|length > 1 %}
+  <div class="topic-chips">
+    <a class="topic-chip {{ 'is-active' if not selected_topic_id else '' }}" href="/simple/history">全部</a>
+    {% for item in topics %}
+      <a class="topic-chip {{ 'is-active' if selected_topic_id == item.id else '' }}"
+         href="/simple/history?topic_id={{ item.id }}">{{ item.name }}</a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if not groups %}
+  <div class="empty-state empty-state-compact">
+    <div class="empty-title">还没有历史报告</div>
+    <div class="empty-desc">回到主页，选一个研究主题并开始研究。</div>
+    <a class="btn btn-primary" href="/">返回主页</a>
+  </div>
+{% endif %}
+
+{% for group in groups %}
+  <div class="simple-block">
+    <div class="simple-block-label">{{ group.topic_name }}</div>
+
+    {% if group.topic %}
+      <div class="brief" style="margin-bottom:var(--space-4)">
+        <div class="brief-name">{{ group.topic.name }}</div>
+        {% if group.topic.regions or group.topic.window_text %}
+          <div class="brief-scope">
+            {{ group.topic.regions }}{% if group.topic.regions %} · {% endif %}{{ group.topic.window_text }}
+          </div>
+        {% endif %}
+        {% if group.topic.focus_areas %}
+          <div class="brief-focus">{{ group.topic.focus_areas|join(' · ') }}</div>
+        {% endif %}
+        <div class="brief-actions">
+          <span class="small muted">
+            共 {{ group.reports|length }} 期
+            {%- if group.event_count %} · {{ group.event_count }} 个追踪中的事件{% endif %}
+          </span>
+          <div class="spacer"></div>
+          <form method="post" action="/simple/research" class="inline">
+            <input type="hidden" name="topic_id" value="{{ group.topic.id }}">
+            <button type="submit" class="btn btn-primary btn-sm" {% if not engine.ready %}disabled{% endif %}>
+              {{ ui.icon('play', 'icon icon-sm') }} 开始研究
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="report-list">
+      {% for row in group.reports %}
+        <a class="report-list-row" href="/reports/{{ row.report.id }}?from=simple">
+          <span class="report-list-date">{{ row.report.report_date|cn_date }}</span>
+          <span class="report-list-main">
+            <span class="report-list-title">{{ row.report.item_count }} 项动态</span>
+            <span class="report-list-meta">
+              新增 {{ row.report.new_count }} · 更新 {{ row.report.updated_count }}
+              {%- if row.report.coverage_status == 'partial' %} · 部分完成{% endif %}
+            </span>
+          </span>
+          <span class="report-list-side">{{ ui.icon('chevron-right', 'icon icon-sm') }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}
